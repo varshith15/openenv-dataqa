@@ -1,0 +1,391 @@
+"""
+Task definitions for the DataQA environment.
+
+Each task provides:
+- A clean dataset (CSV)
+- A schema + validation rules
+- A set of planted issues (ground truth)
+- A function to inject those issues into the clean data
+"""
+
+from __future__ import annotations
+
+import csv
+import io
+import random
+from dataclasses import dataclass, field
+from typing import List, Set
+
+
+@dataclass
+class PlantedIssue:
+    """A single planted data quality issue."""
+
+    row: int
+    col: str
+    issue_type: str
+    description: str
+
+    def to_key(self) -> str:
+        return f"row:{self.row},col:{self.col},issue:{self.issue_type}"
+
+
+@dataclass
+class Task:
+    task_id: str
+    name: str
+    description: str
+    schema_description: str
+    validation_rules: str
+    clean_csv: str
+    planted_issues: List[PlantedIssue] = field(default_factory=list)
+    corrupted_csv: str = ""
+    max_steps: int = 3
+
+
+def _csv_to_rows(csv_text: str) -> List[List[str]]:
+    reader = csv.reader(io.StringIO(csv_text.strip()))
+    return [row for row in reader]
+
+
+def _rows_to_csv(rows: List[List[str]]) -> str:
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerows(rows)
+    return output.getvalue()
+
+
+# ---------------------------------------------------------------------------
+# TASK 1: Easy — Employee directory with obvious issues
+# ---------------------------------------------------------------------------
+
+def create_task_easy(seed: int = 42) -> Task:
+    rng = random.Random(seed)
+
+    clean_csv = """employee_id,name,email,department,salary,start_date
+101,Alice Chen,alice.chen@company.com,Engineering,95000,2022-03-15
+102,Bob Martinez,bob.martinez@company.com,Marketing,72000,2021-07-01
+103,Carol Davis,carol.davis@company.com,Engineering,98000,2020-11-20
+104,David Kim,david.kim@company.com,Sales,68000,2023-01-10
+105,Eve Johnson,eve.johnson@company.com,HR,71000,2022-06-05
+106,Frank Wilson,frank.wilson@company.com,Engineering,102000,2019-08-12
+107,Grace Lee,grace.lee@company.com,Marketing,75000,2021-12-01
+108,Hank Brown,hank.brown@company.com,Sales,65000,2023-04-18
+109,Iris Patel,iris.patel@company.com,HR,73000,2020-02-28
+110,Jack Taylor,jack.taylor@company.com,Engineering,97000,2022-09-14"""
+
+    schema_desc = """Columns:
+- employee_id: integer, unique, range 100-999
+- name: string, non-empty, format "FirstName LastName"
+- email: string, valid email format, must match pattern firstname.lastname@company.com
+- department: string, one of [Engineering, Marketing, Sales, HR]
+- salary: integer, range 50000-150000
+- start_date: string, format YYYY-MM-DD, must be between 2015-01-01 and 2025-12-31"""
+
+    rules = """1. No missing values in any column
+2. employee_id must be unique
+3. email must follow the pattern: lowercase(firstname).lowercase(lastname)@company.com
+4. salary must be within the valid range
+5. No duplicate rows"""
+
+    rows = _csv_to_rows(clean_csv)
+    header = rows[0]
+    data = rows[1:]
+    issues: List[PlantedIssue] = []
+
+    # Issue 1: Missing value - null out a name
+    r = 3  # row index in data (0-based), displayed as row 4 in CSV
+    data[r][1] = ""
+    issues.append(PlantedIssue(row=r + 1, col="name", issue_type="missing_value",
+                               description="Empty name field"))
+
+    # Issue 2: Wrong type - salary as text
+    r = 6
+    data[r][4] = "seventy-five thousand"
+    issues.append(PlantedIssue(row=r + 1, col="salary", issue_type="wrong_type",
+                               description="Salary is text instead of integer"))
+
+    # Issue 3: Duplicate row
+    dup_source = 1
+    data.append(list(data[dup_source]))
+    issues.append(PlantedIssue(row=len(data), col="employee_id", issue_type="duplicate_row",
+                               description=f"Exact duplicate of row {dup_source + 1}"))
+
+    # Issue 4: Out of range salary
+    r = 8
+    data[r][4] = "5000"
+    issues.append(PlantedIssue(row=r + 1, col="salary", issue_type="out_of_range",
+                               description="Salary 5000 is below minimum 50000"))
+
+    corrupted = _rows_to_csv([header] + data)
+
+    return Task(
+        task_id="easy",
+        name="Employee Directory Validation",
+        description=(
+            "You are given an employee directory dataset. "
+            "Find all data quality issues based on the schema and validation rules. "
+            "Report each issue in the format: row:<row_number>,col:<column_name>,issue:<issue_type>"
+        ),
+        schema_description=schema_desc,
+        validation_rules=rules,
+        clean_csv=clean_csv,
+        planted_issues=issues,
+        corrupted_csv=corrupted,
+        max_steps=3,
+    )
+
+
+# ---------------------------------------------------------------------------
+# TASK 2: Medium — E-commerce orders with moderate issues
+# ---------------------------------------------------------------------------
+
+def create_task_medium(seed: int = 42) -> Task:
+    rng = random.Random(seed)
+
+    clean_csv = """order_id,customer_id,product_name,category,quantity,unit_price,order_date,shipping_country,status,total
+ORD-001,CUST-100,Wireless Mouse,Electronics,2,29.99,2024-01-15,US,delivered,59.98
+ORD-002,CUST-101,Python Cookbook,Books,1,45.50,2024-01-16,UK,delivered,45.50
+ORD-003,CUST-102,USB-C Hub,Electronics,1,35.00,2024-01-17,US,shipped,35.00
+ORD-004,CUST-103,Yoga Mat,Sports,1,25.99,2024-01-18,CA,delivered,25.99
+ORD-005,CUST-104,Desk Lamp,Home,1,42.00,2024-01-19,US,processing,42.00
+ORD-006,CUST-105,Running Shoes,Sports,1,89.99,2024-01-20,DE,delivered,89.99
+ORD-007,CUST-106,Mechanical Keyboard,Electronics,1,129.99,2024-01-21,US,shipped,129.99
+ORD-008,CUST-100,Monitor Stand,Home,1,55.00,2024-01-22,US,delivered,55.00
+ORD-009,CUST-107,Data Science Handbook,Books,2,39.99,2024-01-23,UK,delivered,79.98
+ORD-010,CUST-108,Resistance Bands,Sports,3,12.99,2024-01-24,CA,shipped,38.97
+ORD-011,CUST-109,Webcam HD,Electronics,1,65.00,2024-01-25,US,delivered,65.00
+ORD-012,CUST-110,Standing Desk,Home,1,299.99,2024-01-26,US,processing,299.99
+ORD-013,CUST-111,Tennis Racket,Sports,1,75.00,2024-01-27,AU,delivered,75.00
+ORD-014,CUST-112,LED Strip Lights,Home,2,18.50,2024-01-28,US,shipped,37.00
+ORD-015,CUST-113,AI Textbook,Books,1,59.99,2024-01-29,DE,delivered,59.99
+ORD-016,CUST-114,Bluetooth Speaker,Electronics,1,49.99,2024-01-30,UK,delivered,49.99
+ORD-017,CUST-115,Jump Rope,Sports,2,8.99,2024-01-31,US,shipped,17.98
+ORD-018,CUST-116,Coffee Table Book,Books,1,32.00,2024-02-01,CA,delivered,32.00
+ORD-019,CUST-117,Ergonomic Chair,Home,1,450.00,2024-02-02,US,processing,450.00
+ORD-020,CUST-118,Fitness Tracker,Electronics,1,79.99,2024-02-03,AU,delivered,79.99"""
+
+    schema_desc = """Columns:
+- order_id: string, unique, format ORD-NNN
+- customer_id: string, format CUST-NNN
+- product_name: string, non-empty
+- category: string, one of [Electronics, Books, Sports, Home]
+- quantity: integer, range 1-100
+- unit_price: float, range 0.01-10000.00
+- order_date: string, format YYYY-MM-DD
+- shipping_country: string, ISO 2-letter country code
+- status: string, one of [processing, shipped, delivered, cancelled, returned]
+- total: float, must equal quantity * unit_price"""
+
+    rules = """1. No missing values in any column
+2. order_id must be unique
+3. total must equal quantity * unit_price (tolerance: 0.01)
+4. order_date must be in valid chronological order for sequential order_ids
+5. category must be from the allowed set
+6. All monetary values must have at most 2 decimal places
+7. shipping_country must be a valid ISO 2-letter code"""
+
+    rows = _csv_to_rows(clean_csv)
+    header = rows[0]
+    data = rows[1:]
+    issues: List[PlantedIssue] = []
+
+    # Issue 1: total doesn't match quantity * unit_price
+    r = 4  # ORD-005
+    data[r][9] = "84.00"  # should be 42.00 (qty=1, price=42.00)
+    issues.append(PlantedIssue(row=r + 1, col="total", issue_type="inconsistent_value",
+                               description="total (84.00) != quantity (1) * unit_price (42.00)"))
+
+    # Issue 2: Invalid category
+    r = 9  # ORD-010
+    data[r][3] = "Fitness"  # should be Sports
+    issues.append(PlantedIssue(row=r + 1, col="category", issue_type="format_violation",
+                               description="'Fitness' is not in allowed categories"))
+
+    # Issue 3: Missing value in product_name
+    r = 13  # ORD-014
+    data[r][2] = ""
+    issues.append(PlantedIssue(row=r + 1, col="product_name", issue_type="missing_value",
+                               description="Empty product_name"))
+
+    # Issue 4: Out of range quantity
+    r = 16  # ORD-017
+    data[r][4] = "-1"
+    issues.append(PlantedIssue(row=r + 1, col="quantity", issue_type="out_of_range",
+                               description="Negative quantity"))
+
+    # Issue 5: Duplicate order_id
+    r = 18  # ORD-019
+    data[r][0] = "ORD-003"
+    issues.append(PlantedIssue(row=r + 1, col="order_id", issue_type="duplicate_row",
+                               description="Duplicate order_id ORD-003"))
+
+    # Issue 6: Wrong date format
+    r = 11  # ORD-012
+    data[r][6] = "26/01/2024"
+    issues.append(PlantedIssue(row=r + 1, col="order_date", issue_type="format_violation",
+                               description="Date format DD/MM/YYYY instead of YYYY-MM-DD"))
+
+    corrupted = _rows_to_csv([header] + data)
+
+    return Task(
+        task_id="medium",
+        name="E-commerce Orders Validation",
+        description=(
+            "You are given an e-commerce orders dataset. "
+            "Find all data quality issues based on the schema and validation rules. "
+            "Report each issue in the format: row:<row_number>,col:<column_name>,issue:<issue_type>"
+        ),
+        schema_description=schema_desc,
+        validation_rules=rules,
+        clean_csv=clean_csv,
+        planted_issues=issues,
+        corrupted_csv=corrupted,
+        max_steps=3,
+    )
+
+
+# ---------------------------------------------------------------------------
+# TASK 3: Hard — ML training metadata with subtle issues
+# ---------------------------------------------------------------------------
+
+def create_task_hard(seed: int = 42) -> Task:
+    rng = random.Random(seed)
+
+    clean_csv = """experiment_id,model_name,dataset,train_size,val_size,test_size,learning_rate,batch_size,epochs,train_loss,val_loss,test_accuracy,gpu_memory_gb,training_time_hours,timestamp
+EXP-001,resnet50,imagenet-1k,1281167,50000,100000,0.001,256,90,0.85,1.12,76.3,12.4,48.5,2024-03-01T10:00:00
+EXP-002,bert-base,squad-v2,130319,11873,8862,0.00003,32,3,0.45,0.52,81.2,7.8,2.1,2024-03-02T14:30:00
+EXP-003,gpt2-small,openwebtext,8013769,100000,100000,0.0003,64,1,3.12,3.28,0.0,14.2,72.0,2024-03-03T09:15:00
+EXP-004,vit-base,imagenet-1k,1281167,50000,100000,0.001,512,300,0.72,0.98,79.8,15.6,96.0,2024-03-05T08:00:00
+EXP-005,distilbert,mnli,392702,9815,9796,0.00005,16,5,0.28,0.35,84.6,5.2,1.5,2024-03-06T11:00:00
+EXP-006,llama2-7b,alpaca-52k,51760,500,500,0.00002,4,3,1.05,1.18,0.0,38.5,8.2,2024-03-07T16:00:00
+EXP-007,resnet18,cifar10,50000,5000,10000,0.01,128,200,0.15,0.28,93.5,3.2,1.8,2024-03-08T10:30:00
+EXP-008,t5-small,cnn-dailymail,287113,13368,11490,0.0001,16,10,1.45,1.62,0.0,6.8,4.5,2024-03-09T13:00:00
+EXP-009,efficientnet-b0,imagenet-1k,1281167,50000,100000,0.005,256,350,0.68,0.89,77.1,8.4,36.0,2024-03-10T07:45:00
+EXP-010,roberta-large,sst2,67349,872,1821,0.00001,8,10,0.08,0.12,95.1,14.8,3.2,2024-03-11T15:00:00
+EXP-011,yolov5-m,coco-2017,118287,5000,40670,0.01,32,300,0.032,0.045,0.0,10.2,24.0,2024-03-12T09:00:00
+EXP-012,wav2vec2,librispeech,281241,5567,2620,0.0001,8,20,0.92,1.05,0.0,12.6,15.0,2024-03-13T11:30:00
+EXP-013,clip-base,cc3m,2818102,15000,15000,0.00001,256,32,2.15,2.38,0.0,22.4,48.0,2024-03-14T08:00:00
+EXP-014,detr,coco-2017,118287,5000,40670,0.0001,4,500,1.85,2.12,0.0,16.0,72.0,2024-03-15T10:00:00
+EXP-015,whisper-small,common-voice,520000,16000,16000,0.00005,16,5,0.55,0.68,0.0,7.4,6.5,2024-03-16T14:00:00"""
+
+    schema_desc = """Columns:
+- experiment_id: string, unique, format EXP-NNN
+- model_name: string, non-empty
+- dataset: string, non-empty
+- train_size: integer, positive, must be > val_size and > test_size
+- val_size: integer, positive
+- test_size: integer, positive
+- learning_rate: float, range 1e-7 to 1.0
+- batch_size: integer, must be power of 2, range 1-1024
+- epochs: integer, positive, range 1-1000
+- train_loss: float, non-negative
+- val_loss: float, non-negative, typically >= train_loss (if not, may indicate data leakage)
+- test_accuracy: float, range 0-100 (percentage), 0.0 is valid for generative models
+- gpu_memory_gb: float, positive
+- training_time_hours: float, positive
+- timestamp: string, ISO 8601 format, chronological order by experiment_id"""
+
+    rules = """1. No missing values
+2. experiment_id must be unique
+3. val_loss should be >= train_loss (if val_loss < train_loss significantly, flag as potential data leakage)
+4. batch_size must be a power of 2
+5. train_size must be larger than both val_size and test_size
+6. learning_rate must be within valid range
+7. gpu_memory_gb should be reasonable for the model size (e.g., resnet18 shouldn't need 40GB)
+8. training_time should be proportional to dataset size and epochs (flag major inconsistencies)
+9. timestamps must be in chronological order"""
+
+    rows = _csv_to_rows(clean_csv)
+    header = rows[0]
+    data = rows[1:]
+    issues: List[PlantedIssue] = []
+
+    # Issue 1: Data leakage signal — val_loss much lower than train_loss
+    r = 4  # EXP-005
+    data[r][10] = "0.15"  # val_loss=0.15 but train_loss=0.28 → suspicious
+    issues.append(PlantedIssue(row=r + 1, col="val_loss", issue_type="inconsistent_value",
+                               description="val_loss (0.15) significantly less than train_loss (0.28), potential data leakage"))
+
+    # Issue 2: Batch size not power of 2
+    r = 8  # EXP-009
+    data[r][7] = "250"  # not a power of 2
+    issues.append(PlantedIssue(row=r + 1, col="batch_size", issue_type="format_violation",
+                               description="batch_size 250 is not a power of 2"))
+
+    # Issue 3: GPU memory unreasonable for model
+    r = 6  # EXP-007 resnet18 on cifar10
+    data[r][12] = "42.5"  # resnet18 shouldn't need 42.5 GB
+    issues.append(PlantedIssue(row=r + 1, col="gpu_memory_gb", issue_type="statistical_outlier",
+                               description="resnet18 on cifar10 using 42.5 GB GPU memory is unreasonable"))
+
+    # Issue 4: Timestamp out of order
+    r = 10  # EXP-011
+    data[r][14] = "2024-03-02T09:00:00"  # should be after EXP-010's timestamp
+    issues.append(PlantedIssue(row=r + 1, col="timestamp", issue_type="inconsistent_value",
+                               description="Timestamp 2024-03-02 is before EXP-010's timestamp 2024-03-11"))
+
+    # Issue 5: Train size smaller than test size
+    r = 9  # EXP-010
+    data[r][3] = "500"  # train_size=500 but test_size=1821
+    issues.append(PlantedIssue(row=r + 1, col="train_size", issue_type="inconsistent_value",
+                               description="train_size (500) is smaller than test_size (1821)"))
+
+    # Issue 6: Negative training time
+    r = 13  # EXP-014
+    data[r][13] = "-72.0"
+    issues.append(PlantedIssue(row=r + 1, col="training_time_hours", issue_type="out_of_range",
+                               description="Negative training time"))
+
+    # Issue 7: Learning rate out of range
+    r = 12  # EXP-013
+    data[r][6] = "2.5"  # way too high
+    issues.append(PlantedIssue(row=r + 1, col="learning_rate", issue_type="out_of_range",
+                               description="Learning rate 2.5 exceeds maximum of 1.0"))
+
+    # Issue 8: Missing model name (subtle — single space instead of empty)
+    r = 14  # EXP-015
+    data[r][1] = " "
+    issues.append(PlantedIssue(row=r + 1, col="model_name", issue_type="missing_value",
+                               description="model_name is whitespace-only"))
+
+    corrupted = _rows_to_csv([header] + data)
+
+    return Task(
+        task_id="hard",
+        name="ML Experiment Metadata Validation",
+        description=(
+            "You are given an ML experiment tracking dataset. "
+            "Find all data quality issues based on the schema and validation rules. "
+            "This dataset contains subtle issues including potential data leakage signals, "
+            "unreasonable resource usage, and logical inconsistencies. "
+            "Report each issue in the format: row:<row_number>,col:<column_name>,issue:<issue_type>"
+        ),
+        schema_description=schema_desc,
+        validation_rules=rules,
+        clean_csv=clean_csv,
+        planted_issues=issues,
+        corrupted_csv=corrupted,
+        max_steps=3,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Task registry
+# ---------------------------------------------------------------------------
+
+TASK_REGISTRY = {
+    "easy": create_task_easy,
+    "medium": create_task_medium,
+    "hard": create_task_hard,
+}
+
+
+def get_task(task_id: str, seed: int = 42) -> Task:
+    if task_id not in TASK_REGISTRY:
+        raise ValueError(f"Unknown task: {task_id}. Available: {list(TASK_REGISTRY.keys())}")
+    return TASK_REGISTRY[task_id](seed=seed)
+
+
+def list_tasks() -> List[str]:
+    return list(TASK_REGISTRY.keys())
