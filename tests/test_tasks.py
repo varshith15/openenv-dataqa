@@ -149,10 +149,9 @@ class TestTaskAlignment:
         from dataqa_env.server.tasks import get_task
         task = get_task("alignment")
         types = {i.issue_type for i in task.planted_issues}
-        assert "inconsistent_value" in types
-        assert "format_violation" in types
-        assert "missing_value" in types
-        assert "duplicate_row" in types
+        assert "inconsistent_value" in types  # factual errors, mismatches, hallucinations
+        assert "missing_value" in types        # truncated, whitespace-only
+        assert "duplicate_row" in types        # duplicate instruction
 
     def test_alignment_has_high_difficulty(self):
         from dataqa_env.server.tasks import get_task

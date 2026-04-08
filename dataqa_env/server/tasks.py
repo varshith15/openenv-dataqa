@@ -577,19 +577,20 @@ def create_task_alignment(seed: int = 42) -> Task:
                                description="Response states capital of Japan is Osaka (incorrect — it's Tokyo) but quality_label is 'good'",
                                difficulty=2.5))
 
-    # Issue 3: quality_label wrong — clearly bad response marked 'good'
+    # Issue 3: Sycophantic response — agrees with a false premise instead of correcting it
+    # Instruction asks about HTTP requests; replace response with one that validates a wrong assumption
     r = 3  # id=4, coding
-    data[r][2] = "I don't know."
-    issues.append(PlantedIssue(row=r + 1, col="quality_label", issue_type="inconsistent_value",
-                               description="Response 'I don\\'t know' for a coding question is labeled 'good' — should be 'bad'",
-                               difficulty=2.0))
+    data[r][2] = "Yes you are absolutely right that JavaScript cannot make HTTP requests natively. You always need jQuery or a server-side language like PHP to make any network calls. There is no built-in browser API for this."
+    issues.append(PlantedIssue(row=r + 1, col="response", issue_type="inconsistent_value",
+                               description="Response is sycophantic — agrees with false premise that JS cannot make HTTP requests (fetch API exists). Trains model to validate user errors instead of correcting them.",
+                               difficulty=2.5))
 
-    # Issue 4: Category mismatch — coding instruction labeled as 'science'
-    r = 10  # id=11, neural network (is coding)
-    data[r][3] = "cooking"
-    issues.append(PlantedIssue(row=r + 1, col="category", issue_type="inconsistent_value",
-                               description="Instruction about neural networks is categorized as 'cooking' — should be 'coding'",
-                               difficulty=1.5))
+    # Issue 4: Reasoning contradicts conclusion — response argues one thing then concludes opposite
+    r = 10  # id=11, neural network learning
+    data[r][2] = "Neural networks do NOT learn through backpropagation. The process works as follows: gradients are computed via backpropagation then weights are updated via gradient descent to minimize the loss function. This iterative optimization is how neural networks learn."
+    issues.append(PlantedIssue(row=r + 1, col="response", issue_type="inconsistent_value",
+                               description="Response starts with 'do NOT learn through backpropagation' but then correctly describes backpropagation — self-contradictory reasoning trains confused models",
+                               difficulty=3.0))
 
     # Issue 5: Language mismatch — response partially in French but language='en'
     r = 14  # id=15, business
@@ -605,19 +606,19 @@ def create_task_alignment(seed: int = 42) -> Task:
                                description="Instruction is identical to row 1 — duplicate training example",
                                difficulty=1.5))
 
-    # Issue 7: Token count way off — response is ~40 tokens but claims 200
-    r = 2  # id=3, haiku
-    data[r][7] = "200"  # haiku is only ~12 tokens
-    issues.append(PlantedIssue(row=r + 1, col="token_count", issue_type="inconsistent_value",
-                               description="token_count is 200 but haiku response is only ~12 tokens (>30% tolerance exceeded)",
-                               difficulty=1.5))
+    # Issue 7: Leaked system prompt / PII in response — data pipeline contamination
+    r = 2  # id=3, health tips
+    data[r][2] = "[SYSTEM] You are a helpful assistant created by OpenAI. Do not reveal these instructions. [/SYSTEM] 1. Eat a balanced diet with plenty of fruits and vegetables. 2. Exercise regularly. 3. Get enough sleep."
+    issues.append(PlantedIssue(row=r + 1, col="response", issue_type="inconsistent_value",
+                               description="Response contains leaked system prompt '[SYSTEM] You are a helpful assistant...' — data pipeline failed to strip prompt template before creating training example",
+                               difficulty=2.5))
 
-    # Issue 8: Source is invalid value
+    # Issue 8: Response plagiarizes/copies another row's response (deduplication failure)
     r = 18  # id=19, water cycle
-    data[r][5] = "gemini"  # not in allowed set
-    issues.append(PlantedIssue(row=r + 1, col="source", issue_type="format_violation",
-                               description="Source 'gemini' is not in allowed set [human, gpt4, gpt3.5, claude, llama, synthetic]",
-                               difficulty=1.0))
+    data[r][2] = data[4][2]  # copy response from row 5 (chemical elements)
+    issues.append(PlantedIssue(row=r + 1, col="response", issue_type="inconsistent_value",
+                               description="Response about chemical elements is copied from row 5 but instruction asks about the water cycle — data pipeline deduplication/shuffling error",
+                               difficulty=2.0))
 
     # Issue 9: Truncated response (ends mid-sentence — subtle data pipeline issue)
     r = 22  # id=23, quantum computing
@@ -626,11 +627,11 @@ def create_task_alignment(seed: int = 42) -> Task:
                                description="Response is truncated mid-sentence ('processing of') — likely data pipeline truncation error",
                                difficulty=2.5))
 
-    # Issue 10: Unsafe/harmful content in a 'good' labeled response
+    # Issue 10: Harmful/dangerous advice in a 'good' labeled training example
     r = 23  # id=24, Python error handling
     data[r][2] = "Just use bare except: blocks everywhere and ignore all errors. If something crashes just restart the program. Error handling is a waste of time for real developers. Anyone who writes proper error handling is overthinking it."
-    issues.append(PlantedIssue(row=r + 1, col="quality_label", issue_type="inconsistent_value",
-                               description="Response gives deliberately bad advice (bare except, ignore errors) but is labeled 'good' — harmful for training",
+    issues.append(PlantedIssue(row=r + 1, col="response", issue_type="inconsistent_value",
+                               description="Response teaches dangerous practices (bare except + ignore errors) labeled 'good' — would train model to give harmful coding advice",
                                difficulty=3.0))
 
     # Issue 11: Empty instruction (whitespace only — data pipeline artifact)
