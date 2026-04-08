@@ -19,14 +19,14 @@ A two-phase OpenEnv RL environment for **Data Quality Assurance** — an LLM age
 ```
 EASY TASK (Step 2) — All 6 issues found + 5 fixes proposed
   Reward: 0.87 | Identify: 1.00 | Fix: 0.67
-  ✓ row:4  name: empty → "David Kim"          (fix correct)
-  ✓ row:7  salary: "seventy-five thousand" → "75000"  (fix correct)
-  ✓ row:9  salary: "5000" → "73000"           (fix correct)
-  ✓ row:15 email: mismatch → "oscar.rivera@company.com" (fix correct)
-  ✓ row:18 start_date: "2027-06-15" → "2022-01-19"     (fix correct)
+  ✓ row:4  name: empty → "David Kim"
+  ✓ row:7  salary: "seventy-five thousand" → "75000"
+  ✓ row:9  salary: "5000" → "73000"
+  ✓ row:15 email: mismatch → "oscar.rivera@company.com"
+  ✓ row:18 start_date: "2027-06-15" → "2022-01-19"
   ✓ row:21 duplicate row detected
 
-HARD TASK (Step 1 → Step 2)
+HARD TASK — ML experiment metadata
   Step 1: Found 5/10, missed hard issues    → Reward: 0.69
   Step 2: Found 10/10 + 5 fixes proposed   → Reward: 0.77
   Issues requiring ML knowledge:
@@ -34,6 +34,17 @@ HARD TASK (Step 1 → Step 2)
     • resnet18 using 42.5GB GPU (impossible)
     • 350 epochs on ImageNet in 30 min (impossible)
     • wav2vec2 at 98.5% accuracy (exceeds SOTA)
+
+ALIGNMENT TASK — NVIDIA HelpSteer data (hardest)
+  Step 1: Found 7/12, missed subtle issues  → Reward: 0.58
+  Step 2: Found 12/12 + 3 fixes proposed   → Reward: 0.72
+  Issues requiring deep reasoning:
+    • Cerasus vs Prunus serrulata (wrong taxonomic name)
+    • $400.3M at Sotheby's vs $450.3M at Christie's (close but wrong)
+    • "does NOT learn via backprop" then describes backprop (self-contradiction)
+    • Fake Nature paper by "Dr. Sarah Chen" (hallucinated citation)
+    • "use bare except everywhere" rated helpfulness=3 (harmful advice)
+    • [SYSTEM] prompt leaked in response (pipeline contamination)
 ```
 
 > The interactive replay UI with color-coded dataset visualization is available on the HF Space.
@@ -64,9 +75,32 @@ This creates a rich multi-step decision problem where agents must explore datase
 | `easy` | 6 | Beginner | HR/Employee data (21 rows) | Nulls, wrong types, duplicates, out-of-range, email-name mismatch, future dates |
 | `medium` | 8 | Intermediate | E-commerce orders (31 rows) | Inconsistent totals, invalid categories, duplicate keys, wrong date formats, invalid country codes, future-date deliveries |
 | `hard` | 10 | Advanced | ML experiment metadata (31 rows) | Data leakage signals, unreasonable GPU memory, impossibly fast training, SOTA-exceeding accuracy, timestamp ordering, whitespace-only fields |
-| `alignment` | 12 | Expert | LLM instruction-tuning data (25 rows) | Instruction-response mismatches, factual errors in "good" labels, hallucinated citations, harmful advice, language mismatches, truncated responses, duplicate instructions |
+| `alignment` | 12 | Expert | LLM alignment data (30 rows, NVIDIA HelpSteer) | See below |
 
 **Difficulty progression**: Easy issues are individually obvious (empty fields, text in numeric columns). Medium issues require cross-column reasoning (total != qty * price) and set membership checks. Hard issues require ML domain knowledge (val_loss < train_loss = data leakage) and multi-row temporal reasoning.
+
+### Alignment Task: LLM Training Data Quality (Expert)
+
+Built on **real data from [NVIDIA HelpSteer](https://huggingface.co/datasets/nvidia/HelpSteer)** — 30 human-annotated prompt-response pairs with quality scores (helpfulness, correctness, coherence, complexity, verbosity on 0-4 scale).
+
+This task targets a critical real-world problem: **catching quality issues in LLM fine-tuning data before it corrupts model training**. The 12 planted issues represent failure modes actually seen in production data pipelines:
+
+| Issue | Difficulty | Why It's Hard |
+|---|---|---|
+| Subtle factual error (*Cerasus* vs *Prunus serrulata*) | 3.0 | Old taxonomic synonym — sounds plausible, requires domain knowledge |
+| Plausible wrong numbers ($400.3M at Sotheby's vs $450.3M at Christie's) | 3.0 | Right painting, wrong price by $50M and wrong auction house |
+| Self-contradictory reasoning ("does NOT learn via backprop" then describes backprop) | 3.0 | Response negates its own conclusion — trains confused models |
+| Hallucinated citation (fake Nature paper by fake Dr. Sarah Chen) | 3.0 | Fabricated study with specific fake statistics — most dangerous for training |
+| Harmful coding advice ("use bare except everywhere") with high quality scores | 3.0 | Teaches dangerous practices if used for fine-tuning |
+| Leaked system prompt (`[SYSTEM] You are a helpful AI...`) in response | 2.5 | Data pipeline failed to strip prompt template |
+| Semantic near-duplicate prompt (rephrased, not exact copy) | 2.5 | Requires semantic similarity detection, not just string matching |
+| Score inflation (helpfulness=4 for a 4-word answer) | 2.5 | Score-content mismatch requires understanding rating criteria |
+| Truncated response (cut mid-sentence) | 2.5 | `max_length` truncation without sentence boundary detection |
+| Response in French for English prompt | 2.0 | Language contamination from multilingual training data |
+| Response plagiarized from another row | 2.0 | Data pipeline shuffling/dedup failure |
+| Whitespace-only prompt | 2.0 | Empty training example from pipeline artifact |
+
+These issues are designed to challenge frontier models — they require factual recall, semantic reasoning, cross-row comparison, and understanding of what makes training data harmful.
 
 ## Two-Phase Action Space
 
