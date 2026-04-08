@@ -194,9 +194,15 @@ def grade_fixes(
 
         difficulty = matching_issue.difficulty if matching_issue else 1.0
 
-        # Score the fix
+        # Score the fix using tiered grading:
+        #   1.0 = exact match with clean value
+        #   0.8 = valid fix (right type, in range, addresses the issue) but not exact
+        #   0.4 = partially valid (reasonable attempt, right direction)
+        #   0.1 = targets correct cell but fix doesn't address the issue
+        #   0.0 = makes things worse or targets non-issue cell
         score = 0.0
         reason = "wrong value"
+        issue_type = matching_issue.issue_type if matching_issue else ""
 
         # Exact match (case-insensitive, whitespace-stripped)
         if proposed.strip().lower() == clean_value.lower():
@@ -204,27 +210,129 @@ def grade_fixes(
             reason = "exact match"
             fixes_correct += 1
         else:
-            # Try numeric close match
-            try:
-                proposed_num = float(proposed.strip())
-                clean_num = float(clean_value)
-                if clean_num != 0 and abs(proposed_num - clean_num) / abs(clean_num) <= 0.01:
+            # Grade by issue type — check if the fix is VALID even if not exact
+            proposed_stripped = proposed.strip()
+
+            if issue_type == "missing_value":
+                # Any non-empty value is a reasonable fix for a missing value
+                if proposed_stripped and proposed_stripped != " ":
                     score = 0.8
-                    reason = "numeric close match"
+                    reason = "valid fix (non-empty value for missing field)"
                     fixes_partial += 1
-                elif proposed_num == clean_num:
-                    score = 1.0
-                    reason = "exact numeric match"
-                    fixes_correct += 1
+                else:
+                    score = 0.0
+                    reason = "fix is still empty"
+                    fixes_wrong += 1
+
+            elif issue_type == "wrong_type":
+                # Check if the proposed value is the correct type
+                try:
+                    float(proposed_stripped)
+                    # Original was text, proposed is numeric — correct type fix
+                    score = 0.8
+                    reason = "valid fix (correct type)"
+                    fixes_partial += 1
+                except ValueError:
+                    score = 0.1
+                    reason = "fix is still wrong type"
+                    fixes_partial += 1
+
+            elif issue_type == "out_of_range":
+                # Check if proposed value is within a reasonable range
+                try:
+                    proposed_num = float(proposed_stripped)
+                    clean_num = float(clean_value)
+                    # Within 50% of clean value = good estimate
+                    if clean_num != 0 and abs(proposed_num - clean_num) / abs(clean_num) <= 0.5:
+                        score = 0.8
+                        reason = "valid fix (in reasonable range)"
+                        fixes_partial += 1
+                    elif proposed_num > 0 and (clean_num > 0) == (proposed_num > 0):
+                        # At least right sign/direction
+                        score = 0.4
+                        reason = "partially valid (right direction)"
+                        fixes_partial += 1
+                    else:
+                        score = 0.1
+                        reason = "fix still out of reasonable range"
+                        fixes_partial += 1
+                except ValueError:
+                    score = 0.1
+                    reason = "correct cell, wrong value"
+                    fixes_partial += 1
+
+            elif issue_type == "format_violation":
+                # Check if proposed value matches expected format
+                # For dates: YYYY-MM-DD pattern
+                if re.match(r"\d{4}-\d{2}-\d{2}", proposed_stripped):
+                    score = 0.8
+                    reason = "valid fix (correct format)"
+                    fixes_partial += 1
+                elif proposed_stripped and proposed_stripped != clean_value:
+                    score = 0.4
+                    reason = "fix attempted but format unclear"
+                    fixes_partial += 1
                 else:
                     score = 0.1
                     reason = "correct cell, wrong value"
                     fixes_partial += 1
-            except (ValueError, ZeroDivisionError):
-                # Not numeric — just a wrong value but at least right cell
-                score = 0.1
-                reason = "correct cell, wrong value"
-                fixes_partial += 1
+
+            elif issue_type in ("inconsistent_value", "statistical_outlier"):
+                # These require domain knowledge — any reasonable attempt gets partial credit
+                try:
+                    proposed_num = float(proposed_stripped)
+                    clean_num = float(clean_value)
+                    # Within 20% = strong fix, within 50% = reasonable
+                    if clean_num != 0:
+                        pct_diff = abs(proposed_num - clean_num) / abs(clean_num)
+                        if pct_diff <= 0.01:
+                            score = 1.0
+                            reason = "exact numeric match"
+                            fixes_correct += 1
+                        elif pct_diff <= 0.2:
+                            score = 0.8
+                            reason = "valid fix (within 20% of correct value)"
+                            fixes_partial += 1
+                        elif pct_diff <= 0.5:
+                            score = 0.4
+                            reason = "partially valid (right ballpark)"
+                            fixes_partial += 1
+                        else:
+                            score = 0.1
+                            reason = "correct cell, value not close"
+                            fixes_partial += 1
+                    else:
+                        score = 0.4
+                        reason = "numeric fix attempted"
+                        fixes_partial += 1
+                except ValueError:
+                    # Non-numeric fix for text fields — check similarity
+                    if len(proposed_stripped) > 10 and proposed_stripped != clean_value:
+                        score = 0.4
+                        reason = "text fix attempted (cannot verify automatically)"
+                        fixes_partial += 1
+                    else:
+                        score = 0.1
+                        reason = "correct cell, wrong value"
+                        fixes_partial += 1
+
+            else:
+                # Fallback: numeric close match or partial credit
+                try:
+                    proposed_num = float(proposed_stripped)
+                    clean_num = float(clean_value)
+                    if clean_num != 0 and abs(proposed_num - clean_num) / abs(clean_num) <= 0.01:
+                        score = 0.8
+                        reason = "numeric close match"
+                        fixes_partial += 1
+                    else:
+                        score = 0.1
+                        reason = "correct cell, wrong value"
+                        fixes_partial += 1
+                except (ValueError, ZeroDivisionError):
+                    score = 0.1
+                    reason = "correct cell, wrong value"
+                    fixes_partial += 1
 
         # Keep best fix per cell
         if cell_key not in fixed_issues or score > fixed_issues[cell_key]:
