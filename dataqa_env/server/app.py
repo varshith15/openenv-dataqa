@@ -25,7 +25,7 @@ def root():
     return {
         "name": "DataQA Environment",
         "description": "Two-phase data quality assurance environment: identify issues + propose fixes",
-        "tasks": ["easy", "medium", "hard"],
+        "tasks": ["easy", "medium", "hard", "alignment", "moderation"],
         "endpoints": ["/health", "/reset", "/step", "/state"],
     }
 
