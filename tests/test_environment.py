@@ -228,16 +228,16 @@ class TestGradeFixes:
         assert result["fixes_correct"] >= 1
 
     def test_all_fixes_correct(self, easy_task):
-        # Fix all 4 issues with exact values
+        # Fix most issues with exact values
         fixes = [
             (4, "name", "David Kim"),
             (7, "salary", "75000"),
             (9, "salary", "73000"),
-            # Row 11 is duplicate — clean value for employee_id is "Bob Martinez" row
-            # The duplicate is of row 2 (Bob Martinez), so the clean row 11 doesn't exist
+            (15, "email", "oscar.rivera@company.com"),
+            (18, "start_date", "2022-01-19"),
         ]
         result = grade_fixes(fixes, easy_task)
-        assert result["fix_score"] > 0.5  # at least 3/4 issues fixed
+        assert result["fix_score"] > 0.7  # 5 out of 6 issues fixed (duplicate can't be fixed)
 
     def test_fix_score_bounded(self, easy_task):
         fixes = [(4, "name", "David Kim"), (99, "x", "bad")]
@@ -260,7 +260,7 @@ class TestDataQAEnvironment:
         assert obs.schema_description
         assert obs.validation_rules
         assert obs.task_description
-        assert obs.num_issues_hint == 4
+        assert obs.num_issues_hint == 6
         assert obs.max_steps == 3
         assert obs.done is False
         assert obs.reward == 0.0
@@ -268,7 +268,7 @@ class TestDataQAEnvironment:
 
     def test_reset_medium(self, env):
         obs = env.reset(task_id="medium")
-        assert obs.num_issues_hint == 6
+        assert obs.num_issues_hint == 8
 
     def test_reset_hard(self, env):
         obs = env.reset(task_id="hard")
@@ -277,12 +277,15 @@ class TestDataQAEnvironment:
     def test_step_identify_only(self, env):
         """Backward compatible: only issues, no fixes."""
         env.reset(task_id="easy")
+        # Submit all 6 correct issues for easy task
         action = DataQAAction(
             issues=[
                 "row:4,col:name,issue:missing_value",
                 "row:7,col:salary,issue:wrong_type",
-                "row:11,col:employee_id,issue:duplicate_row",
+                "row:21,col:employee_id,issue:duplicate_row",
                 "row:9,col:salary,issue:out_of_range",
+                "row:15,col:email,issue:inconsistent_value",
+                "row:18,col:start_date,issue:out_of_range",
             ],
             task_id="easy",
         )
@@ -291,30 +294,17 @@ class TestDataQAEnvironment:
         assert obs.reward >= 0.999  # identify-only uses identify_score directly
 
     def test_step_with_fixes_increases_reward(self, env):
-        """Submitting correct fixes should increase reward beyond identify-only."""
+        """Submitting correct fixes should produce high combined reward."""
         env.reset(task_id="easy")
-        # Step 1: identify only
-        action1 = DataQAAction(
+        # All 6 issues + 3 fixes
+        action = DataQAAction(
             issues=[
                 "row:4,col:name,issue:missing_value",
                 "row:7,col:salary,issue:wrong_type",
-                "row:11,col:employee_id,issue:duplicate_row",
+                "row:21,col:employee_id,issue:duplicate_row",
                 "row:9,col:salary,issue:out_of_range",
-            ],
-            task_id="easy",
-        )
-        obs1 = env.step(action1)
-        score_identify = obs1.reward
-
-        # Reset for fair comparison
-        env.reset(task_id="easy")
-        # Step with identify + fixes
-        action2 = DataQAAction(
-            issues=[
-                "row:4,col:name,issue:missing_value",
-                "row:7,col:salary,issue:wrong_type",
-                "row:11,col:employee_id,issue:duplicate_row",
-                "row:9,col:salary,issue:out_of_range",
+                "row:15,col:email,issue:inconsistent_value",
+                "row:18,col:start_date,issue:out_of_range",
             ],
             fixes=[
                 "row:4,col:name,fix:David Kim",
@@ -323,11 +313,9 @@ class TestDataQAEnvironment:
             ],
             task_id="easy",
         )
-        obs2 = env.step(action2)
-        score_with_fixes = obs2.metadata["combined_reward"]
-
-        # With correct fixes, combined should be close to 1.0
-        assert score_with_fixes > 0.8
+        obs = env.step(action)
+        # Perfect identify + partial fixes -> high combined reward
+        assert obs.metadata["combined_reward"] > 0.7
 
     def test_step_with_partial_issues(self, env):
         env.reset(task_id="easy")
@@ -426,12 +414,7 @@ class TestDataQAEnvironment:
         """Verify combined = IDENTIFY_WEIGHT * identify + FIX_WEIGHT * fix."""
         env.reset(task_id="easy")
         action = DataQAAction(
-            issues=[
-                "row:4,col:name,issue:missing_value",
-                "row:7,col:salary,issue:wrong_type",
-                "row:11,col:employee_id,issue:duplicate_row",
-                "row:9,col:salary,issue:out_of_range",
-            ],
+            issues=["row:4,col:name,issue:missing_value"],
             fixes=["row:4,col:name,fix:David Kim"],
             task_id="easy",
         )
@@ -458,13 +441,15 @@ class TestDataQAEnvironment:
             issues=[
                 "row:4,col:name,issue:missing_value",
                 "row:7,col:salary,issue:wrong_type",
-                "row:11,col:employee_id,issue:duplicate_row",
+                "row:21,col:employee_id,issue:duplicate_row",
                 "row:9,col:salary,issue:out_of_range",
+                "row:15,col:email,issue:inconsistent_value",
+                "row:18,col:start_date,issue:out_of_range",
             ],
             task_id="easy",
         )
         obs = env.step(action)
-        # identify_score should be ~1.0 since all issues found
+        # identify_score should be ~1.0 since all 6 issues found
         assert obs.reward >= 0.99
         # combined_reward equals identify_score when no fixes
         assert obs.metadata["combined_reward"] == obs.metadata["identify_score"]

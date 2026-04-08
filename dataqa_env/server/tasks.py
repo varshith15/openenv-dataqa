@@ -150,6 +150,20 @@ def create_task_easy(seed: int = 42) -> Task:
     issues.append(PlantedIssue(row=r + 1, col="salary", issue_type="out_of_range",
                                description="Salary 5000 is below minimum 50000", difficulty=1.0))
 
+    # Issue 5: Email doesn't match name pattern (moderate — cross-column check)
+    r = 14  # Oscar Rivera -> email should be oscar.rivera@company.com
+    data[r][2] = "john.doe@company.com"
+    issues.append(PlantedIssue(row=r + 1, col="email", issue_type="inconsistent_value",
+                               description="Email john.doe@company.com doesn't match name Oscar Rivera",
+                               difficulty=1.5))
+
+    # Issue 6: Future start date (requires knowing current date context)
+    r = 17  # Rosa Diaz
+    data[r][5] = "2027-06-15"
+    issues.append(PlantedIssue(row=r + 1, col="start_date", issue_type="out_of_range",
+                               description="Start date 2027-06-15 is in the future (beyond 2025-12-31)",
+                               difficulty=1.5))
+
     corrupted = _rows_to_csv([header] + data)
 
     return Task(
@@ -268,6 +282,20 @@ ORD-030,CUST-128,Dumbbells Set,Sports,1,89.00,2024-02-13,US,shipped,89.00"""
     data[r][6] = "26/01/2024"
     issues.append(PlantedIssue(row=r + 1, col="order_date", issue_type="format_violation",
                                description="Date format DD/MM/YYYY instead of YYYY-MM-DD", difficulty=1.5))
+
+    # Issue 7: Invalid country code (requires ISO knowledge)
+    r = 23  # ORD-024
+    data[r][7] = "XX"  # not a valid ISO country code
+    issues.append(PlantedIssue(row=r + 1, col="shipping_country", issue_type="format_violation",
+                               description="'XX' is not a valid ISO 2-letter country code", difficulty=1.5))
+
+    # Issue 8: Status-date inconsistency — order from Feb 13 still "processing" is suspicious
+    # but more importantly: delivered order with a future date
+    r = 28  # ORD-029
+    data[r][6] = "2025-12-25"  # future date but status is "delivered"
+    issues.append(PlantedIssue(row=r + 1, col="order_date", issue_type="inconsistent_value",
+                               description="Order date 2025-12-25 is in the future but status is 'delivered'",
+                               difficulty=2.0))
 
     corrupted = _rows_to_csv([header] + data)
 

@@ -49,8 +49,8 @@ class TestTaskEasy:
     def test_task_id(self, task):
         assert task.task_id == "easy"
 
-    def test_has_4_issues(self, task):
-        assert len(task.planted_issues) == 4
+    def test_has_6_issues(self, task):
+        assert len(task.planted_issues) == 6
 
     def test_issue_types(self, task):
         types = {i.issue_type for i in task.planted_issues}
@@ -58,6 +58,7 @@ class TestTaskEasy:
         assert "wrong_type" in types
         assert "duplicate_row" in types
         assert "out_of_range" in types
+        assert "inconsistent_value" in types
 
     def test_corrupted_csv_differs_from_clean(self, task):
         assert task.corrupted_csv != task.clean_csv
@@ -87,8 +88,8 @@ class TestTaskMedium:
     def test_task_id(self, task):
         assert task.task_id == "medium"
 
-    def test_has_6_issues(self, task):
-        assert len(task.planted_issues) == 6
+    def test_has_8_issues(self, task):
+        assert len(task.planted_issues) == 8
 
     def test_issue_types(self, task):
         types = {i.issue_type for i in task.planted_issues}
