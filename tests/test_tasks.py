@@ -134,10 +134,61 @@ class TestTaskHard:
         assert len(keys) == len(set(keys))
 
 
+class TestTaskAlignment:
+    @pytest.fixture
+    def task(self):
+        return create_task_hard()  # reuse import, we'll import alignment below
+
+    def test_alignment_task(self):
+        from dataqa_env.server.tasks import get_task
+        task = get_task("alignment")
+        assert task.task_id == "alignment"
+        assert len(task.planted_issues) == 12
+
+    def test_alignment_issue_types(self):
+        from dataqa_env.server.tasks import get_task
+        task = get_task("alignment")
+        types = {i.issue_type for i in task.planted_issues}
+        assert "inconsistent_value" in types
+        assert "format_violation" in types
+        assert "missing_value" in types
+        assert "duplicate_row" in types
+
+    def test_alignment_has_high_difficulty(self):
+        from dataqa_env.server.tasks import get_task
+        task = get_task("alignment")
+        hard_issues = [i for i in task.planted_issues if i.difficulty >= 2.5]
+        assert len(hard_issues) >= 3  # hallucinated citation, harmful advice, factual error
+
+    def test_alignment_issue_keys_unique(self):
+        from dataqa_env.server.tasks import get_task
+        task = get_task("alignment")
+        keys = [i.to_key() for i in task.planted_issues]
+        assert len(keys) == len(set(keys))
+
+    def test_alignment_corrupted_differs(self):
+        from dataqa_env.server.tasks import get_task
+        task = get_task("alignment")
+        assert task.corrupted_csv != task.clean_csv
+
+    def test_alignment_in_env(self):
+        from dataqa_env.server.environment import DataQAEnvironment
+        from dataqa_env.models import DataQAAction
+        env = DataQAEnvironment()
+        obs = env.reset(task_id="alignment")
+        assert obs.num_issues_hint == 12
+        # Perfect submission
+        from dataqa_env.server.tasks import get_task
+        task = get_task("alignment")
+        action = DataQAAction(issues=[i.to_key() for i in task.planted_issues], task_id="alignment")
+        obs = env.step(action)
+        assert obs.reward >= 0.99
+
+
 class TestTaskRegistry:
     def test_list_tasks(self):
         tasks = list_tasks()
-        assert set(tasks) == {"easy", "medium", "hard"}
+        assert set(tasks) == {"easy", "medium", "hard", "alignment"}
 
     def test_get_task_easy(self):
         task = get_task("easy")

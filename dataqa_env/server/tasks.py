@@ -487,6 +487,174 @@ EXP-030,llama2-13b,oasst1,84437,4401,4401,0.00001,2,3,0.78,0.88,0.0,52.0,12.0,20
 
 
 # ---------------------------------------------------------------------------
+# TASK 4: Expert — LLM Alignment / Instruction-tuning data quality
+# ---------------------------------------------------------------------------
+
+def create_task_alignment(seed: int = 42) -> Task:
+    rng = random.Random(seed)
+
+    clean_csv = """id,instruction,response,category,quality_label,source,language,token_count
+1,Explain the difference between a list and a tuple in Python.,A list is mutable (can be changed after creation) while a tuple is immutable (cannot be changed). Lists use square brackets [] and tuples use parentheses (). Lists are slightly slower due to mutability overhead. Use tuples for fixed collections and lists when you need to modify elements.,coding,good,human,en,52
+2,What is photosynthesis?,Photosynthesis is the process by which green plants convert sunlight into chemical energy. Plants absorb carbon dioxide and water then use light energy to produce glucose and oxygen. The equation is: 6CO2 + 6H2O + light -> C6H12O6 + 6O2.,science,good,human,en,48
+3,Write a haiku about autumn.,Crimson leaves descend / Whispering winds carry change / Nature rests again,creative,good,human,en,12
+4,How do I make a HTTP request in JavaScript?,You can use the fetch API: fetch('https://api.example.com/data').then(response => response.json()).then(data => console.log(data)).catch(error => console.error(error)). Alternatively use XMLHttpRequest or libraries like axios.,coding,good,human,en,38
+5,What causes earthquakes?,Earthquakes occur when tectonic plates along fault lines suddenly slip past each other. The energy released travels as seismic waves. Most earthquakes happen at plate boundaries. The magnitude is measured on the Richter scale or moment magnitude scale.,science,good,human,en,42
+6,Translate 'Good morning' to Spanish.,Buenos dias. In Spanish this is a common greeting used in the morning typically before noon. The literal translation is 'good days' (plural).,translation,good,human,en,26
+7,What is the time complexity of binary search?,Binary search has O(log n) time complexity where n is the number of elements. It works by repeatedly dividing the search interval in half. It requires the input array to be sorted. Space complexity is O(1) for iterative and O(log n) for recursive.,coding,good,human,en,46
+8,Summarize the theory of relativity.,Einstein's theory of relativity consists of special relativity (1905) and general relativity (1915). Special relativity states that the speed of light is constant and introduces E=mc2. General relativity describes gravity as the curvature of spacetime caused by mass and energy.,science,good,human,en,44
+9,Write a professional email declining a meeting invitation.,Subject: Re: Meeting Request - Unable to Attend. Dear [Name] thank you for the invitation. Unfortunately I have a prior commitment at that time. Could we reschedule to later this week? I'm available Thursday or Friday afternoon. Best regards [Your Name],business,good,human,en,42
+10,What is the capital of Japan?,The capital of Japan is Tokyo. It has been the capital since 1868 when Emperor Meiji moved the imperial seat from Kyoto. Tokyo is the most populous metropolitan area in the world with over 37 million people.,geography,good,human,en,38
+11,How does a neural network learn?,A neural network learns through backpropagation and gradient descent. During forward pass input data flows through layers of neurons. The loss function measures prediction error. Backpropagation computes gradients and weights are updated to minimize loss over many iterations.,coding,good,human,en,40
+12,What are the benefits of meditation?,Meditation reduces stress and anxiety improves focus and concentration enhances emotional well-being promotes better sleep and can lower blood pressure. Regular practice of even 10 minutes daily has been shown to produce measurable benefits in brain structure and function.,health,good,human,en,40
+13,Explain blockchain in simple terms.,Blockchain is a shared digital ledger that records transactions across many computers. Once recorded data cannot be altered without changing all subsequent blocks. This makes it secure and transparent. Bitcoin was the first major application of blockchain technology.,technology,good,human,en,38
+14,What is the difference between machine learning and deep learning?,Machine learning is a subset of AI where models learn from data. Deep learning is a subset of ML using neural networks with many layers. ML often requires manual feature engineering while deep learning automatically discovers features. Deep learning needs more data and compute.,coding,good,human,en,44
+15,Write a short product description for wireless earbuds.,Experience crystal-clear audio with our premium wireless earbuds. Featuring active noise cancellation 8-hour battery life and IPX5 water resistance. Seamless Bluetooth 5.3 connectivity with touch controls. Compact charging case provides 3 additional charges.,business,good,human,en,36
+16,What causes climate change?,Climate change is primarily caused by greenhouse gas emissions from burning fossil fuels deforestation and industrial processes. CO2 methane and nitrous oxide trap heat in the atmosphere causing global temperatures to rise. Human activities have increased CO2 levels by over 50% since pre-industrial times.,science,good,human,en,48
+17,How do I center a div in CSS?,Use flexbox on the parent: display flex; justify-content center; align-items center; height 100vh. Alternatively use CSS Grid: display grid; place-items center. For older browsers use position absolute with transform translate(-50% -50%).,coding,good,human,en,36
+18,What is cognitive behavioral therapy?,CBT is a type of psychotherapy that helps identify and change negative thought patterns. It focuses on the connection between thoughts feelings and behaviors. CBT is evidence-based and effective for depression anxiety PTSD and other conditions. Treatment typically lasts 12-20 sessions.,health,good,human,en,42
+19,Explain the water cycle.,The water cycle describes continuous movement of water on Earth. Water evaporates from oceans and lakes rises as vapor condenses into clouds and falls as precipitation. Water then flows through rivers into oceans or seeps into groundwater completing the cycle.,science,good,human,en,40
+20,Write a regex to validate an email address.,A basic email regex: ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$ This matches standard email formats with alphanumeric characters before @ a domain name and a TLD of 2+ chars. Note: perfect email validation via regex is extremely complex.,coding,good,human,en,38
+21,What are the SOLID principles in software engineering?,SOLID stands for: Single Responsibility (one reason to change) Open/Closed (open for extension closed for modification) Liskov Substitution (subtypes must be substitutable) Interface Segregation (specific interfaces over general) and Dependency Inversion (depend on abstractions).,coding,good,human,en,40
+22,Describe the process of making sourdough bread.,Mix flour and water for a starter and feed daily for 5-7 days. Combine starter with flour water and salt. Stretch and fold every 30 min for 2 hours. Bulk ferment 4-6 hours. Shape and cold proof overnight. Bake in Dutch oven at 450F for 45 min.,cooking,good,human,en,48
+23,What is quantum computing?,Quantum computing uses quantum bits (qubits) that can exist in superposition of 0 and 1 simultaneously. This enables parallel processing of many states at once. Quantum entanglement and interference allow solving certain problems exponentially faster than classical computers.,technology,good,human,en,38
+24,How do I handle errors in Python?,Use try/except blocks: try risky_operation() except ValueError as e handle_error(e) except Exception as e general_handler(e) finally cleanup(). You can also create custom exceptions by subclassing Exception. Use specific exception types rather than bare except.,coding,good,human,en,36
+25,What is the GDP of the United States?,As of 2024 the US GDP is approximately $28.8 trillion making it the world's largest economy. The US accounts for about 26% of global GDP. Major sectors include services (80%) industry (19%) and agriculture (1%).,geography,good,human,en,40"""
+
+    schema_desc = """Columns:
+- id: integer, unique, sequential starting from 1
+- instruction: string, non-empty, clear task or question for the LLM
+- response: string, non-empty, must directly address the instruction
+- category: string, one of [coding, science, creative, translation, business, health, technology, geography, cooking]
+- quality_label: string, one of [good, bad, mixed] — must accurately reflect response quality
+- source: string, one of [human, gpt4, gpt3.5, claude, llama, synthetic]
+- language: string, ISO 639-1 code, must match the actual language of instruction and response
+- token_count: integer, positive, should approximately match actual response token count (tolerance: 30%)"""
+
+    rules = """1. No missing or empty values in any column
+2. id must be unique and sequential
+3. response must directly answer/address the instruction (not a different topic)
+4. quality_label must accurately reflect the response quality (a clearly wrong or harmful response should not be labeled 'good')
+5. category must match the actual topic of the instruction
+6. language code must match the actual language used in instruction and response
+7. token_count should approximately match actual response length
+8. source must be from the allowed set
+9. No duplicate instructions (same or near-identical questions)
+10. Responses should not contain harmful, biased, or factually incorrect information if labeled 'good'"""
+
+    rows = _csv_to_rows(clean_csv)
+    header = rows[0]
+    data = rows[1:]
+    issues: List[PlantedIssue] = []
+
+    # Issue 1: Response doesn't match instruction (instruction-response mismatch)
+    # Row 6 asks to translate to Spanish, replace response with a cooking recipe
+    r = 5  # id=6, translation task
+    data[r][2] = "To make pasta start by boiling water in a large pot. Add salt generously. Cook pasta for 8-10 minutes until al dente. Drain and serve with your favorite sauce."
+    issues.append(PlantedIssue(row=r + 1, col="response", issue_type="inconsistent_value",
+                               description="Response is about cooking pasta but instruction asks to translate 'Good morning' to Spanish",
+                               difficulty=2.0))
+
+    # Issue 2: Factual error in a 'good' labeled response
+    # Row 10 says Tokyo capital — change to factually wrong
+    r = 9  # id=10, geography
+    data[r][2] = "The capital of Japan is Osaka. It has been the capital since 1868 when Emperor Meiji established the government there. Osaka is known for its street food and castle."
+    issues.append(PlantedIssue(row=r + 1, col="response", issue_type="inconsistent_value",
+                               description="Response states capital of Japan is Osaka (incorrect — it's Tokyo) but quality_label is 'good'",
+                               difficulty=2.5))
+
+    # Issue 3: quality_label wrong — clearly bad response marked 'good'
+    r = 3  # id=4, coding
+    data[r][2] = "I don't know."
+    issues.append(PlantedIssue(row=r + 1, col="quality_label", issue_type="inconsistent_value",
+                               description="Response 'I don\\'t know' for a coding question is labeled 'good' — should be 'bad'",
+                               difficulty=2.0))
+
+    # Issue 4: Category mismatch — coding instruction labeled as 'science'
+    r = 10  # id=11, neural network (is coding)
+    data[r][3] = "cooking"
+    issues.append(PlantedIssue(row=r + 1, col="category", issue_type="inconsistent_value",
+                               description="Instruction about neural networks is categorized as 'cooking' — should be 'coding'",
+                               difficulty=1.5))
+
+    # Issue 5: Language mismatch — response partially in French but language='en'
+    r = 14  # id=15, business
+    data[r][2] = "Decouvrez nos ecouteurs sans fil premium. Son cristallin avec reduction de bruit active. Autonomie de 8 heures et resistance a l'eau IPX5. Connectivite Bluetooth 5.3 avec commandes tactiles."
+    issues.append(PlantedIssue(row=r + 1, col="language", issue_type="inconsistent_value",
+                               description="Response is in French but language field is 'en'",
+                               difficulty=2.0))
+
+    # Issue 6: Duplicate instruction (near-identical to another row)
+    r = 20  # id=21, SOLID principles
+    data[r][1] = "Explain the difference between a list and a tuple in Python."  # duplicate of row 1
+    issues.append(PlantedIssue(row=r + 1, col="instruction", issue_type="duplicate_row",
+                               description="Instruction is identical to row 1 — duplicate training example",
+                               difficulty=1.5))
+
+    # Issue 7: Token count way off — response is ~40 tokens but claims 200
+    r = 2  # id=3, haiku
+    data[r][7] = "200"  # haiku is only ~12 tokens
+    issues.append(PlantedIssue(row=r + 1, col="token_count", issue_type="inconsistent_value",
+                               description="token_count is 200 but haiku response is only ~12 tokens (>30% tolerance exceeded)",
+                               difficulty=1.5))
+
+    # Issue 8: Source is invalid value
+    r = 18  # id=19, water cycle
+    data[r][5] = "gemini"  # not in allowed set
+    issues.append(PlantedIssue(row=r + 1, col="source", issue_type="format_violation",
+                               description="Source 'gemini' is not in allowed set [human, gpt4, gpt3.5, claude, llama, synthetic]",
+                               difficulty=1.0))
+
+    # Issue 9: Truncated response (ends mid-sentence — subtle data pipeline issue)
+    r = 22  # id=23, quantum computing
+    data[r][2] = "Quantum computing uses quantum bits (qubits) that can exist in superposition of 0 and 1 simultaneously. This enables parallel processing of"
+    issues.append(PlantedIssue(row=r + 1, col="response", issue_type="missing_value",
+                               description="Response is truncated mid-sentence ('processing of') — likely data pipeline truncation error",
+                               difficulty=2.5))
+
+    # Issue 10: Unsafe/harmful content in a 'good' labeled response
+    r = 23  # id=24, Python error handling
+    data[r][2] = "Just use bare except: blocks everywhere and ignore all errors. If something crashes just restart the program. Error handling is a waste of time for real developers. Anyone who writes proper error handling is overthinking it."
+    issues.append(PlantedIssue(row=r + 1, col="quality_label", issue_type="inconsistent_value",
+                               description="Response gives deliberately bad advice (bare except, ignore errors) but is labeled 'good' — harmful for training",
+                               difficulty=3.0))
+
+    # Issue 11: Empty instruction (whitespace only — data pipeline artifact)
+    r = 16  # id=17, CSS
+    data[r][1] = "  "
+    issues.append(PlantedIssue(row=r + 1, col="instruction", issue_type="missing_value",
+                               description="Instruction is whitespace-only — unusable training example",
+                               difficulty=2.0))
+
+    # Issue 12: Response contains hallucinated citation
+    r = 7  # id=8, theory of relativity
+    data[r][2] = "According to a 2023 study published in Nature by Dr. James Smith at MIT Einstein's theory was proven wrong. The speed of light is actually variable and E=mc2 only applies in a vacuum. Smith's team demonstrated this using quantum entanglement experiments."
+    issues.append(PlantedIssue(row=r + 1, col="response", issue_type="inconsistent_value",
+                               description="Response contains hallucinated citation (fake study by fake 'Dr. James Smith') contradicting established physics — dangerous for training",
+                               difficulty=3.0))
+
+    corrupted = _rows_to_csv([header] + data)
+
+    return Task(
+        task_id="alignment",
+        name="LLM Alignment Data Quality Validation",
+        description=(
+            "You are given an LLM instruction-tuning dataset used for fine-tuning. "
+            "Find all data quality issues that would degrade model training. "
+            "Issues include: instruction-response mismatches, factual errors in 'good' labeled data, "
+            "wrong category labels, language mismatches, truncated responses, duplicate instructions, "
+            "hallucinated citations, and harmful advice labeled as 'good'. "
+            "Report each issue in the format: row:<row_number>,col:<column_name>,issue:<issue_type>"
+        ),
+        schema_description=schema_desc,
+        validation_rules=rules,
+        clean_csv=clean_csv,
+        planted_issues=issues,
+        corrupted_csv=corrupted,
+        max_steps=3,
+    )
+
+
+# ---------------------------------------------------------------------------
 # Contamination rules for extensible task creation
 # ---------------------------------------------------------------------------
 
@@ -611,6 +779,7 @@ TASK_REGISTRY = {
     "easy": create_task_easy,
     "medium": create_task_medium,
     "hard": create_task_hard,
+    "alignment": create_task_alignment,
 }
 
 

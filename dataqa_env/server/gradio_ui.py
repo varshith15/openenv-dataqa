@@ -116,6 +116,45 @@ AGENT_TRAJECTORIES = {
             ],
         },
     ],
+    "alignment": [
+        {
+            "issues": [
+                "row:4,col:quality_label,issue:inconsistent_value",
+                "row:6,col:response,issue:inconsistent_value",
+                "row:11,col:category,issue:inconsistent_value",
+                "row:19,col:source,issue:format_violation",
+                "row:3,col:token_count,issue:inconsistent_value",
+                "row:17,col:instruction,issue:missing_value",
+                "row:21,col:instruction,issue:duplicate_row",
+            ],
+            "fixes": [],
+        },
+        {
+            "issues": [
+                "row:4,col:quality_label,issue:inconsistent_value",
+                "row:6,col:response,issue:inconsistent_value",
+                "row:10,col:response,issue:inconsistent_value",
+                "row:11,col:category,issue:inconsistent_value",
+                "row:15,col:language,issue:inconsistent_value",
+                "row:19,col:source,issue:format_violation",
+                "row:3,col:token_count,issue:inconsistent_value",
+                "row:17,col:instruction,issue:missing_value",
+                "row:21,col:instruction,issue:duplicate_row",
+                "row:23,col:response,issue:missing_value",
+                "row:24,col:quality_label,issue:inconsistent_value",
+                "row:8,col:response,issue:inconsistent_value",
+            ],
+            "fixes": [
+                "row:6,col:response,fix:Buenos dias. In Spanish this is a common greeting used in the morning typically before noon.",
+                "row:10,col:response,fix:The capital of Japan is Tokyo.",
+                "row:11,col:category,fix:coding",
+                "row:19,col:source,fix:human",
+                "row:3,col:token_count,fix:12",
+                "row:4,col:quality_label,fix:bad",
+                "row:24,col:quality_label,fix:bad",
+            ],
+        },
+    ],
 }
 
 
