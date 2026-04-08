@@ -95,7 +95,7 @@ class TestTaskMedium:
         types = {i.issue_type for i in task.planted_issues}
         assert "inconsistent_value" in types
         assert "format_violation" in types
-        assert "missing_value" in types
+        assert "wrong_type" in types
 
     def test_issue_keys_unique(self, task):
         keys = [i.to_key() for i in task.planted_issues]
@@ -123,7 +123,6 @@ class TestTaskHard:
         assert "format_violation" in types
         assert "statistical_outlier" in types
         assert "out_of_range" in types
-        assert "missing_value" in types
 
     def test_has_high_difficulty_issues(self, task):
         hard_issues = [i for i in task.planted_issues if i.difficulty >= 2.5]

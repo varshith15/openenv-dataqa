@@ -144,24 +144,25 @@ def create_task_easy(seed: int = 42) -> Task:
     issues.append(PlantedIssue(row=len(data), col="employee_id", issue_type="duplicate_row",
                                description=f"Exact duplicate of row {dup_source + 1}", difficulty=1.5))
 
-    # Issue 4: Out of range salary (easy to spot)
-    r = 8
-    data[r][4] = "5000"
-    issues.append(PlantedIssue(row=r + 1, col="salary", issue_type="out_of_range",
-                               description="Salary 5000 is below minimum 50000", difficulty=1.0))
+    # Issue 4: Department is not in allowed set (deterministic: "Engneering" is not valid, closest match = "Engineering")
+    r = 10  # Kevin Zhang, department is Engineering
+    data[r][3] = "Engneering"
+    issues.append(PlantedIssue(row=r + 1, col="department", issue_type="format_violation",
+                               description="Department 'Engneering' is misspelled — should be 'Engineering'",
+                               difficulty=1.0))
 
-    # Issue 5: Email doesn't match name pattern (moderate — cross-column check)
+    # Issue 5: Email doesn't match name pattern (deterministic fix: derive from name)
     r = 14  # Oscar Rivera -> email should be oscar.rivera@company.com
     data[r][2] = "john.doe@company.com"
     issues.append(PlantedIssue(row=r + 1, col="email", issue_type="inconsistent_value",
                                description="Email john.doe@company.com doesn't match name Oscar Rivera",
                                difficulty=1.5))
 
-    # Issue 6: Future start date (requires knowing current date context)
-    r = 17  # Rosa Diaz
-    data[r][5] = "2027-06-15"
-    issues.append(PlantedIssue(row=r + 1, col="start_date", issue_type="out_of_range",
-                               description="Start date 2027-06-15 is in the future (beyond 2025-12-31)",
+    # Issue 6: Salary with extra digit — typo (deterministic fix: "950000" → "95000")
+    r = 17  # Rosa Diaz, original salary is 99000
+    data[r][4] = "990000"  # extra zero
+    issues.append(PlantedIssue(row=r + 1, col="salary", issue_type="out_of_range",
+                               description="Salary 990000 exceeds maximum 150000 — likely extra digit typo (should be 99000)",
                                difficulty=1.5))
 
     corrupted = _rows_to_csv([header] + data)
@@ -259,17 +260,19 @@ ORD-030,CUST-128,Dumbbells Set,Sports,1,89.00,2024-02-13,US,shipped,89.00"""
     issues.append(PlantedIssue(row=r + 1, col="category", issue_type="format_violation",
                                description="'Fitness' is not in allowed categories", difficulty=1.5))
 
-    # Issue 3: Missing value in product_name (easy to spot)
-    r = 13  # ORD-014
-    data[r][2] = ""
-    issues.append(PlantedIssue(row=r + 1, col="product_name", issue_type="missing_value",
-                               description="Empty product_name", difficulty=1.0))
+    # Issue 3: Product name misspelling (deterministic fix: "Wireles Charger" → "Wireless Charger")
+    r = 28  # ORD-029
+    data[r][2] = "Wireles Charger"
+    issues.append(PlantedIssue(row=r + 1, col="product_name", issue_type="format_violation",
+                               description="Product name 'Wireles Charger' is misspelled — should be 'Wireless Charger'",
+                               difficulty=1.0))
 
-    # Issue 4: Out of range quantity (easy to spot)
-    r = 16  # ORD-017
-    data[r][4] = "-1"
-    issues.append(PlantedIssue(row=r + 1, col="quantity", issue_type="out_of_range",
-                               description="Negative quantity", difficulty=1.0))
+    # Issue 4: Quantity is letter O instead of zero — OCR/encoding error (deterministic: "1O" → "10")
+    r = 9  # ORD-010
+    data[r][4] = "1O"  # letter O not digit 0
+    issues.append(PlantedIssue(row=r + 1, col="quantity", issue_type="wrong_type",
+                               description="Quantity '1O' contains letter O instead of digit 0 — should be '10'",
+                               difficulty=1.5))
 
     # Issue 5: Duplicate order_id (requires cross-row comparison)
     r = 18  # ORD-019
@@ -283,19 +286,20 @@ ORD-030,CUST-128,Dumbbells Set,Sports,1,89.00,2024-02-13,US,shipped,89.00"""
     issues.append(PlantedIssue(row=r + 1, col="order_date", issue_type="format_violation",
                                description="Date format DD/MM/YYYY instead of YYYY-MM-DD", difficulty=1.5))
 
-    # Issue 7: Invalid country code (requires ISO knowledge)
+    # Issue 7: Status misspelling (deterministic fix: "deliverred" → "delivered")
     r = 23  # ORD-024
-    data[r][7] = "XX"  # not a valid ISO country code
-    issues.append(PlantedIssue(row=r + 1, col="shipping_country", issue_type="format_violation",
-                               description="'XX' is not a valid ISO 2-letter country code", difficulty=1.5))
+    data[r][8] = "deliverred"
+    issues.append(PlantedIssue(row=r + 1, col="status", issue_type="format_violation",
+                               description="Status 'deliverred' is misspelled — should be 'delivered'",
+                               difficulty=1.0))
 
-    # Issue 8: Status-date inconsistency — order from Feb 13 still "processing" is suspicious
-    # but more importantly: delivered order with a future date
-    r = 28  # ORD-029
-    data[r][6] = "2025-12-25"  # future date but status is "delivered"
-    issues.append(PlantedIssue(row=r + 1, col="order_date", issue_type="inconsistent_value",
-                               description="Order date 2025-12-25 is in the future but status is 'delivered'",
-                               difficulty=2.0))
+    # Issue 8: Unit price has 3 decimal places (deterministic fix: "34.999" → "34.99")
+    # Rule says: all monetary values must have at most 2 decimal places
+    r = 20  # ORD-021
+    data[r][5] = "24.999"
+    issues.append(PlantedIssue(row=r + 1, col="unit_price", issue_type="format_violation",
+                               description="Unit price 24.999 has 3 decimal places — rule requires at most 2 (should be 24.99 or 25.00)",
+                               difficulty=1.5))
 
     corrupted = _rows_to_csv([header] + data)
 
@@ -421,23 +425,26 @@ EXP-030,llama2-13b,oasst1,84437,4401,4401,0.00001,2,3,0.78,0.88,0.0,52.0,12.0,20
                                description="train_size (500) is smaller than test_size (1821)",
                                difficulty=2.0))
 
-    # Issue 6: Negative training time (easy to spot)
+    # Issue 6: Negative training time — sign typo (deterministic: "-72.0" → "72.0")
     r = 13  # EXP-014
     data[r][13] = "-72.0"
     issues.append(PlantedIssue(row=r + 1, col="training_time_hours", issue_type="out_of_range",
-                               description="Negative training time", difficulty=1.0))
+                               description="Negative training time -72.0 — likely sign typo (should be 72.0)",
+                               difficulty=1.0))
 
-    # Issue 7: Learning rate out of range (easy to spot)
+    # Issue 7: Learning rate in wrong notation (deterministic: "2.5e1" intended as "2.5e-5" → "0.000025")
     r = 12  # EXP-013
-    data[r][6] = "2.5"  # way too high
+    data[r][6] = "2.5"  # clearly missing the "e-5" part
     issues.append(PlantedIssue(row=r + 1, col="learning_rate", issue_type="out_of_range",
-                               description="Learning rate 2.5 exceeds maximum of 1.0", difficulty=1.5))
+                               description="Learning rate 2.5 exceeds maximum 1.0 — likely truncated scientific notation (e.g. 2.5e-5 → 0.000025)",
+                               difficulty=1.5))
 
-    # Issue 8: Missing model name (hard — whitespace-only is subtle)
+    # Issue 8: Model name misspelling (deterministic: "whsiper-small" → "whisper-small")
     r = 14  # EXP-015
-    data[r][1] = " "
-    issues.append(PlantedIssue(row=r + 1, col="model_name", issue_type="missing_value",
-                               description="model_name is whitespace-only", difficulty=2.5))
+    data[r][1] = "whsiper-small"
+    issues.append(PlantedIssue(row=r + 1, col="model_name", issue_type="format_violation",
+                               description="Model name 'whsiper-small' is misspelled — should be 'whisper-small'",
+                               difficulty=1.5))
 
     # Issue 9: Training time impossibly fast for dataset size and epochs
     # EXP-004: vit-base on imagenet-1k, 300 epochs, but only 96 hours is plausible.

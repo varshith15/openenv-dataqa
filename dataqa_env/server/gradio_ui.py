@@ -28,8 +28,8 @@ AGENT_TRAJECTORIES = {
             "issues": [
                 "row:4,col:name,issue:missing_value",
                 "row:7,col:salary,issue:wrong_type",
-                "row:9,col:salary,issue:out_of_range",
-                "row:18,col:start_date,issue:out_of_range",
+                "row:11,col:department,issue:format_violation",
+                "row:15,col:email,issue:inconsistent_value",
                 "row:3,col:email,issue:format_violation",  # FP
             ],
             "fixes": [],
@@ -38,21 +38,18 @@ AGENT_TRAJECTORIES = {
             "issues": [
                 "row:4,col:name,issue:missing_value",
                 "row:7,col:salary,issue:wrong_type",
-                "row:9,col:salary,issue:out_of_range",
-                "row:21,col:employee_id,issue:duplicate_row",
+                "row:11,col:department,issue:format_violation",
                 "row:15,col:email,issue:inconsistent_value",
-                "row:18,col:start_date,issue:out_of_range",
+                "row:18,col:salary,issue:out_of_range",
+                "row:21,col:employee_id,issue:duplicate_row",
             ],
             "fixes": [
-                # Inferrable: name "David Kim" deduced from email david.kim@company.com
-                "row:4,col:name,fix:David Kim",
-                # Inferrable: "seventy-five thousand" is clearly 75000
-                "row:7,col:salary,fix:75000",
-                # Inferrable: email must match name pattern oscar.rivera@company.com
-                "row:15,col:email,fix:oscar.rivera@company.com",
-                # NOT proposed: row:9 salary (any valid salary 50000-150000 works)
-                # NOT proposed: row:18 start_date (any past date works)
-                # NOT proposed: row:21 duplicate (remove or reassign — ambiguous)
+                # All deterministic fixes:
+                "row:4,col:name,fix:David Kim",                     # from email david.kim@
+                "row:7,col:salary,fix:75000",                       # "seventy-five thousand" → 75000
+                "row:11,col:department,fix:Engineering",             # "Engneering" → "Engineering"
+                "row:15,col:email,fix:oscar.rivera@company.com",    # from name Oscar Rivera
+                "row:18,col:salary,fix:99000",                      # 990000 → remove extra digit
             ],
         },
     ],
@@ -61,11 +58,10 @@ AGENT_TRAJECTORIES = {
             "issues": [
                 "row:5,col:total,issue:inconsistent_value",
                 "row:10,col:category,issue:format_violation",
-                "row:14,col:product_name,issue:missing_value",
-                "row:17,col:quantity,issue:out_of_range",
-                "row:19,col:order_id,issue:duplicate_row",
+                "row:10,col:quantity,issue:wrong_type",
                 "row:12,col:order_date,issue:format_violation",
-                "row:24,col:shipping_country,issue:format_violation",
+                "row:29,col:product_name,issue:format_violation",
+                "row:24,col:status,issue:format_violation",
             ],
             "fixes": [],
         },
@@ -73,25 +69,22 @@ AGENT_TRAJECTORIES = {
             "issues": [
                 "row:5,col:total,issue:inconsistent_value",
                 "row:10,col:category,issue:format_violation",
-                "row:14,col:product_name,issue:missing_value",
-                "row:17,col:quantity,issue:out_of_range",
-                "row:19,col:order_id,issue:duplicate_row",
+                "row:10,col:quantity,issue:wrong_type",
                 "row:12,col:order_date,issue:format_violation",
-                "row:24,col:shipping_country,issue:format_violation",
-                "row:29,col:order_date,issue:inconsistent_value",
+                "row:19,col:order_id,issue:duplicate_row",
+                "row:21,col:unit_price,issue:format_violation",
+                "row:24,col:status,issue:format_violation",
+                "row:29,col:product_name,issue:format_violation",
             ],
             "fixes": [
-                # Inferrable: total = qty(1) * price(42.00) = 42.00
-                "row:5,col:total,fix:42.00",
-                # Inferrable: "Fitness" is closest to "Sports" in allowed categories
-                "row:10,col:category,fix:Sports",
-                # Inferrable: 26/01/2024 reformatted to YYYY-MM-DD
-                "row:12,col:order_date,fix:2024-01-26",
-                # NOT proposed: row:14 product_name (any product name works)
-                # NOT proposed: row:17 quantity (any positive int)
-                # NOT proposed: row:19 duplicate order_id (reassign — ambiguous)
-                # NOT proposed: row:24 country (could be any valid ISO code)
-                # NOT proposed: row:29 future date (any past date works)
+                # All deterministic:
+                "row:5,col:total,fix:42.00",             # qty(1) * price(42.00)
+                "row:10,col:category,fix:Sports",         # "Fitness" → nearest valid
+                "row:10,col:quantity,fix:10",              # "1O" (letter O) → "10"
+                "row:12,col:order_date,fix:2024-01-26",   # DD/MM/YYYY → YYYY-MM-DD
+                "row:24,col:status,fix:delivered",         # "deliverred" → "delivered"
+                "row:29,col:product_name,fix:Wireless Charger",  # "Wireles" → "Wireless"
+                "row:21,col:unit_price,fix:24.99",        # 24.999 → round to 2 decimals
             ],
         },
     ],
@@ -120,18 +113,11 @@ AGENT_TRAJECTORIES = {
                 "row:12,col:test_accuracy,issue:statistical_outlier",
             ],
             "fixes": [
-                # Inferrable: batch_size 250 → nearest power of 2 = 256
-                "row:9,col:batch_size,fix:256",
-                # Inferrable: negative time -72.0 → absolute value 72.0
-                "row:14,col:training_time_hours,fix:72.0",
-                # NOT proposed: row:13 LR (any valid LR 1e-7 to 1.0)
-                # NOT proposed: row:15 model_name (could be any model)
-                # NOT proposed: row:5 val_loss (any val >= train_loss)
-                # NOT proposed: row:7 GPU memory (any reasonable value)
-                # NOT proposed: row:10 train_size (any value > test_size)
-                # NOT proposed: row:11 timestamp (any date after prev)
-                # NOT proposed: row:9 training_time (any reasonable hours)
-                # NOT proposed: row:12 test_accuracy (any < SOTA)
+                # All deterministic:
+                "row:9,col:batch_size,fix:256",                 # 250 → nearest power of 2
+                "row:14,col:training_time_hours,fix:72.0",      # -72.0 → remove negative sign
+                "row:15,col:model_name,fix:whisper-small",      # "whsiper-small" → fix spelling
+                "row:13,col:learning_rate,fix:0.000025",        # 2.5 → likely 2.5e-5
             ],
         },
     ],

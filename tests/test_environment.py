@@ -197,12 +197,11 @@ class TestGradeFixes:
         result = grade_fixes(fixes, easy_task)
         assert result["fixes_correct"] == 1
 
-    def test_numeric_close_match(self, easy_task):
-        # Row 9 has salary "5000" — clean value is "73000"
-        # Propose 73100 (within 1% of 73000)
-        fixes = [(9, "salary", "73100")]
+    def test_misspelling_fix(self, easy_task):
+        # Row 11 has department "Engneering" — fix to "Engineering"
+        fixes = [(11, "department", "Engineering")]
         result = grade_fixes(fixes, easy_task)
-        assert result["fixes_partial"] == 1
+        assert result["fixes_correct"] == 1
 
     def test_wrong_value_for_issue_cell(self, easy_task):
         # Row 4 name is empty — propose wrong name
@@ -228,16 +227,16 @@ class TestGradeFixes:
         assert result["fixes_correct"] >= 1
 
     def test_all_fixes_correct(self, easy_task):
-        # Fix most issues with exact values
+        # Fix deterministic issues with exact values
         fixes = [
-            (4, "name", "David Kim"),
-            (7, "salary", "75000"),
-            (9, "salary", "73000"),
-            (15, "email", "oscar.rivera@company.com"),
-            (18, "start_date", "2022-01-19"),
+            (4, "name", "David Kim"),        # inferred from email
+            (7, "salary", "75000"),           # type conversion
+            (11, "department", "Engineering"), # spelling fix
+            (15, "email", "oscar.rivera@company.com"),  # pattern match
+            (18, "salary", "99000"),          # remove extra digit
         ]
         result = grade_fixes(fixes, easy_task)
-        assert result["fix_score"] > 0.7  # 5 out of 6 issues fixed (duplicate can't be fixed)
+        assert result["fix_score"] > 0.7
 
     def test_fix_score_bounded(self, easy_task):
         fixes = [(4, "name", "David Kim"), (99, "x", "bad")]
@@ -278,43 +277,31 @@ class TestDataQAEnvironment:
         """Backward compatible: only issues, no fixes."""
         env.reset(task_id="easy")
         # Submit all 6 correct issues for easy task
+        from dataqa_env.server.tasks import get_task
+        task = get_task("easy")
         action = DataQAAction(
-            issues=[
-                "row:4,col:name,issue:missing_value",
-                "row:7,col:salary,issue:wrong_type",
-                "row:21,col:employee_id,issue:duplicate_row",
-                "row:9,col:salary,issue:out_of_range",
-                "row:15,col:email,issue:inconsistent_value",
-                "row:18,col:start_date,issue:out_of_range",
-            ],
+            issues=[i.to_key() for i in task.planted_issues],
             task_id="easy",
         )
         obs = env.step(action)
         assert obs.done is True
-        assert obs.reward >= 0.999  # identify-only uses identify_score directly
+        assert obs.reward >= 0.999
 
     def test_step_with_fixes_increases_reward(self, env):
         """Submitting correct fixes should produce high combined reward."""
         env.reset(task_id="easy")
-        # All 6 issues + 3 fixes
+        from dataqa_env.server.tasks import get_task
+        task = get_task("easy")
         action = DataQAAction(
-            issues=[
-                "row:4,col:name,issue:missing_value",
-                "row:7,col:salary,issue:wrong_type",
-                "row:21,col:employee_id,issue:duplicate_row",
-                "row:9,col:salary,issue:out_of_range",
-                "row:15,col:email,issue:inconsistent_value",
-                "row:18,col:start_date,issue:out_of_range",
-            ],
+            issues=[i.to_key() for i in task.planted_issues],
             fixes=[
                 "row:4,col:name,fix:David Kim",
                 "row:7,col:salary,fix:75000",
-                "row:9,col:salary,fix:73000",
+                "row:9,col:department,fix:Engineering",
             ],
             task_id="easy",
         )
         obs = env.step(action)
-        # Perfect identify + partial fixes -> high combined reward
         assert obs.metadata["combined_reward"] > 0.7
 
     def test_step_with_partial_issues(self, env):
@@ -437,19 +424,12 @@ class TestDataQAEnvironment:
     def test_no_fix_penalty_when_no_fixes_submitted(self, env):
         """If agent submits no fixes, reward = identify_score (no penalty)."""
         env.reset(task_id="easy")
+        from dataqa_env.server.tasks import get_task
+        task = get_task("easy")
         action = DataQAAction(
-            issues=[
-                "row:4,col:name,issue:missing_value",
-                "row:7,col:salary,issue:wrong_type",
-                "row:21,col:employee_id,issue:duplicate_row",
-                "row:9,col:salary,issue:out_of_range",
-                "row:15,col:email,issue:inconsistent_value",
-                "row:18,col:start_date,issue:out_of_range",
-            ],
+            issues=[i.to_key() for i in task.planted_issues],
             task_id="easy",
         )
         obs = env.step(action)
-        # identify_score should be ~1.0 since all 6 issues found
         assert obs.reward >= 0.99
-        # combined_reward equals identify_score when no fixes
         assert obs.metadata["combined_reward"] == obs.metadata["identify_score"]
