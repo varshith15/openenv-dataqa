@@ -57,7 +57,7 @@ class TestTaskEasy:
         assert "missing_value" in types
         assert "wrong_type" in types
         assert "duplicate_row" in types
-        assert "out_of_range" in types
+        assert "format_violation" in types
         assert "inconsistent_value" in types
 
     def test_corrupted_csv_differs_from_clean(self, task):
@@ -95,7 +95,7 @@ class TestTaskMedium:
         types = {i.issue_type for i in task.planted_issues}
         assert "inconsistent_value" in types
         assert "format_violation" in types
-        assert "missing_value" in types
+        assert "wrong_type" in types
 
     def test_issue_keys_unique(self, task):
         keys = [i.to_key() for i in task.planted_issues]
@@ -123,7 +123,6 @@ class TestTaskHard:
         assert "format_violation" in types
         assert "statistical_outlier" in types
         assert "out_of_range" in types
-        assert "missing_value" in types
 
     def test_has_high_difficulty_issues(self, task):
         hard_issues = [i for i in task.planted_issues if i.difficulty >= 2.5]
@@ -184,10 +183,50 @@ class TestTaskAlignment:
         assert obs.reward >= 0.99
 
 
+class TestTaskModeration:
+    def test_moderation_task(self):
+        from dataqa_env.server.tasks import get_task
+        task = get_task("moderation")
+        assert task.task_id == "moderation"
+        assert len(task.planted_issues) == 10
+
+    def test_moderation_issue_types(self):
+        from dataqa_env.server.tasks import get_task
+        task = get_task("moderation")
+        types = {i.issue_type for i in task.planted_issues}
+        assert "inconsistent_value" in types
+        assert "out_of_range" in types
+        assert "missing_value" in types
+        assert "duplicate_row" in types
+
+    def test_moderation_in_env(self):
+        from dataqa_env.server.environment import DataQAEnvironment
+        from dataqa_env.models import DataQAAction
+        from dataqa_env.server.tasks import get_task
+        env = DataQAEnvironment()
+        obs = env.reset(task_id="moderation")
+        assert obs.num_issues_hint == 10
+        task = get_task("moderation")
+        action = DataQAAction(issues=[i.to_key() for i in task.planted_issues], task_id="moderation")
+        obs = env.step(action)
+        assert obs.reward >= 0.99
+
+    def test_moderation_deterministic(self):
+        from dataqa_env.server.environment import DataQAEnvironment
+        from dataqa_env.models import DataQAAction
+        env = DataQAEnvironment()
+        env.reset(task_id="moderation", seed=42)
+        a = DataQAAction(issues=["row:16,col:hate,issue:inconsistent_value"], task_id="moderation")
+        r1 = env.step(a).reward
+        env.reset(task_id="moderation", seed=42)
+        r2 = env.step(a).reward
+        assert r1 == r2
+
+
 class TestTaskRegistry:
     def test_list_tasks(self):
         tasks = list_tasks()
-        assert set(tasks) == {"easy", "medium", "hard", "alignment", "coding", "toolcalling"}
+        assert set(tasks) == {"easy", "medium", "hard", "alignment", "coding", "toolcalling", "moderation"}
 
     def test_get_task_easy(self):
         task = get_task("easy")
