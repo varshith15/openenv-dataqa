@@ -57,7 +57,7 @@ class TestTaskEasy:
         assert "missing_value" in types
         assert "wrong_type" in types
         assert "duplicate_row" in types
-        assert "out_of_range" in types
+        assert "format_violation" in types
         assert "inconsistent_value" in types
 
     def test_corrupted_csv_differs_from_clean(self, task):
