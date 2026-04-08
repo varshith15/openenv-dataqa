@@ -1,12 +1,11 @@
 """Tests for the inference script's parsing, prompt building, and log format."""
 
-import re
 import pytest
 import sys
 import os
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from inference import parse_llm_response, build_user_prompt, log_start, log_step, log_end
+from inference import parse_llm_response, parse_fix_response, build_user_prompt, log_start, log_step, log_end
 
 
 class TestParseLLMResponse:
@@ -50,12 +49,44 @@ class TestParseLLMResponse:
     def test_deduplication_not_applied(self):
         response = "row:1,col:name,issue:missing_value\nrow:1,col:name,issue:missing_value"
         issues = parse_llm_response(response)
-        assert len(issues) == 2  # duplicates kept, env handles dedup
+        assert len(issues) == 2
 
     def test_with_column_variant(self):
         response = "row:1,column:name,issue:missing_value"
         issues = parse_llm_response(response)
         assert len(issues) == 1
+
+
+class TestParseFixResponse:
+    def test_standard_format(self):
+        response = "row:4,col:name,fix:David Kim\nrow:7,col:salary,fix:75000"
+        fixes = parse_fix_response(response)
+        assert len(fixes) == 2
+        assert "row:4,col:name,fix:David Kim" in fixes
+
+    def test_numbered_list(self):
+        response = "1. row:4,col:name,fix:David Kim\n2. row:7,col:salary,fix:75000"
+        fixes = parse_fix_response(response)
+        assert len(fixes) == 2
+
+    def test_with_special_chars(self):
+        response = "row:1,col:email,fix:alice.chen@company.com"
+        fixes = parse_fix_response(response)
+        assert len(fixes) == 1
+        assert "alice.chen@company.com" in fixes[0]
+
+    def test_empty_response(self):
+        assert parse_fix_response("") == []
+
+    def test_date_fix(self):
+        response = "row:12,col:order_date,fix:2024-01-26"
+        fixes = parse_fix_response(response)
+        assert len(fixes) == 1
+
+    def test_ignores_issue_lines(self):
+        response = "row:4,col:name,issue:missing_value\nrow:4,col:name,fix:David Kim"
+        fixes = parse_fix_response(response)
+        assert len(fixes) == 1  # only the fix line
 
 
 class TestBuildUserPrompt:
@@ -99,6 +130,18 @@ class TestBuildUserPrompt:
         }
         prompt = build_user_prompt(obs)
         assert "FEEDBACK" not in prompt
+
+    def test_include_fixes_flag(self):
+        obs = {
+            "task_description": "Find issues",
+            "schema_description": "",
+            "validation_rules": "",
+            "dataset_csv": "a\n1",
+            "num_issues_hint": 0,
+            "feedback": "",
+        }
+        prompt = build_user_prompt(obs, include_fixes=True)
+        assert "fix" in prompt.lower()
 
 
 class TestLogFormat:

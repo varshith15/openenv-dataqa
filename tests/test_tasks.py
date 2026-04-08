@@ -113,8 +113,8 @@ class TestTaskHard:
     def test_task_id(self, task):
         assert task.task_id == "hard"
 
-    def test_has_8_issues(self, task):
-        assert len(task.planted_issues) == 8
+    def test_has_10_issues(self, task):
+        assert len(task.planted_issues) == 10
 
     def test_issue_types(self, task):
         types = {i.issue_type for i in task.planted_issues}

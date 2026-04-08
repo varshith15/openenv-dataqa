@@ -43,6 +43,28 @@ class Task:
     corrupted_csv: str = ""
     max_steps: int = 3
 
+    def get_clean_value(self, row: int, col: str) -> str | None:
+        """
+        Look up the original clean value for a given (row, col).
+        Row is 1-indexed (data row after header).
+        Returns None if row/col is out of bounds or column not found.
+        """
+        rows = _csv_to_rows(self.clean_csv)
+        if len(rows) < 2:
+            return None
+        header = [h.strip().lower() for h in rows[0]]
+        if col.lower() not in header:
+            return None
+        col_idx = header.index(col.lower())
+        data_row_idx = row  # row is 1-indexed, rows[0] is header, so rows[row] is the data row
+        if data_row_idx < 1 or data_row_idx >= len(rows):
+            return None
+        return rows[data_row_idx][col_idx].strip()
+
+    def get_planted_issue_map(self) -> dict:
+        """Return dict mapping issue key -> PlantedIssue for quick lookups."""
+        return {issue.to_key(): issue for issue in self.planted_issues}
+
 
 def _csv_to_rows(csv_text: str) -> List[List[str]]:
     reader = csv.reader(io.StringIO(csv_text.strip()))
@@ -353,6 +375,32 @@ EXP-015,whisper-small,common-voice,520000,16000,16000,0.00005,16,5,0.55,0.68,0.0
     data[r][1] = " "
     issues.append(PlantedIssue(row=r + 1, col="model_name", issue_type="missing_value",
                                description="model_name is whitespace-only", difficulty=2.5))
+
+    # Issue 9: Training time impossibly fast for dataset size and epochs
+    # EXP-004: vit-base on imagenet-1k, 300 epochs, but only 96 hours is plausible.
+    # Let's make EXP-009: efficientnet-b0 on imagenet-1k, 350 epochs = should take ~40+ hours
+    # but we set it to 0.5 hours — impossible for 1.2M images * 350 epochs
+    r = 8  # EXP-009 (same row as batch_size issue, different column)
+    data[r][13] = "0.5"  # 30 minutes for 350 epochs on imagenet? impossible
+    issues.append(PlantedIssue(row=r + 1, col="training_time_hours", issue_type="statistical_outlier",
+                               description="0.5 hours for 350 epochs on imagenet-1k (1.2M images) is impossibly fast",
+                               difficulty=3.0))
+
+    # Issue 10: test_accuracy of 95.1% for roberta-large on SST-2 with train_size=500
+    # is suspiciously high — SOTA is ~96% with full dataset (67k). With only 500 training
+    # samples, 95.1% accuracy suggests data contamination or evaluation bug
+    r = 9  # EXP-010 (same row as train_size issue, different column)
+    # train_size is already corrupted to 500, but the test_accuracy 95.1 is from the
+    # original full-dataset run — this cross-column inconsistency is the real issue
+    # We don't modify the value — the inconsistency emerges from the train_size corruption
+    # So let's use a different row. EXP-001: resnet50 on imagenet, accuracy 76.3 is fine.
+    # Instead: EXP-012 wav2vec2 on librispeech — set test_accuracy to 98.5 (way too high
+    # for a speech model with only 20 epochs, SOTA is ~96% with much more training)
+    r = 11  # EXP-012
+    data[r][11] = "98.5"  # wav2vec2 with 20 epochs shouldn't hit 98.5% — SOTA is ~96%
+    issues.append(PlantedIssue(row=r + 1, col="test_accuracy", issue_type="statistical_outlier",
+                               description="test_accuracy 98.5% for wav2vec2 with only 20 epochs exceeds known SOTA (~96%), likely evaluation error",
+                               difficulty=3.0))
 
     corrupted = _rows_to_csv([header] + data)
 

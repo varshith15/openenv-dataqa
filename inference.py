@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 """
-DataQA Inference Script
------------------------
-LLM agent that plays the DataQA environment.
+DataQA Inference Script — Two-Phase Agent
+------------------------------------------
+LLM agent that plays the DataQA environment in two phases:
+  Phase 1: Identify all data quality issues
+  Phase 2: Propose fixes for identified issues
+
 Uses the OpenAI client to interact with any OpenAI-compatible LLM API.
 
 Required environment variables:
@@ -92,10 +95,10 @@ class EnvHTTPClient:
         r.raise_for_status()
         return r.json()
 
-    def step(self, issues: list[str], task_id: str = "easy") -> dict:
+    def step(self, issues: list[str], fixes: list[str], task_id: str = "easy") -> dict:
         r = self.session.post(
             f"{self.base_url}/step",
-            json={"action": {"issues": issues, "task_id": task_id}},
+            json={"action": {"issues": issues, "fixes": fixes, "task_id": task_id}},
             timeout=30,
         )
         r.raise_for_status()
@@ -103,10 +106,10 @@ class EnvHTTPClient:
 
 
 # ---------------------------------------------------------------------------
-# LLM Agent
+# LLM Prompts
 # ---------------------------------------------------------------------------
 
-SYSTEM_PROMPT = """You are a data quality analyst. Your job is to inspect datasets and identify data quality issues.
+IDENTIFY_SYSTEM_PROMPT = """You are a data quality analyst. Your job is to inspect datasets and identify data quality issues.
 
 You will be given:
 1. A dataset in CSV format
@@ -141,7 +144,26 @@ Respond with ONLY the list of issues, one per line. No other text.
 Example: row:3,col:salary,issue:missing_value"""
 
 
-def build_user_prompt(observation: dict) -> str:
+FIX_SYSTEM_PROMPT = """You are a data repair specialist. You have already identified data quality issues in a dataset. Now you must propose the correct values to fix each issue.
+
+For each issue you identified, propose a fix in EXACTLY this format:
+row:<row_number>,col:<column_name>,fix:<corrected_value>
+
+Guidelines for proposing fixes:
+- For missing_value: infer the correct value from context, schema, and other rows
+- For wrong_type: convert to the correct type (e.g., "seventy-five thousand" → "75000")
+- For out_of_range: propose a value within the valid range that makes sense in context
+- For format_violation: correct the format (e.g., "26/01/2024" → "2024-01-26")
+- For inconsistent_value: compute the correct value from related fields
+- For duplicate_row: propose a corrected unique key or indicate removal
+- For statistical_outlier: propose a reasonable value given the model/context
+
+Use the schema, validation rules, and surrounding data to determine the correct fix.
+Respond with ONLY the list of fixes, one per line. No other text.
+Example: row:3,col:salary,fix:75000"""
+
+
+def build_user_prompt(observation: dict, include_fixes: bool = False) -> str:
     obs = observation if isinstance(observation, dict) else observation
     parts = []
 
@@ -160,6 +182,12 @@ def build_user_prompt(observation: dict) -> str:
     if feedback and "reset" not in feedback.lower():
         parts.append(f"FEEDBACK FROM PREVIOUS ATTEMPT:\n{feedback}")
 
+    if include_fixes:
+        parts.append(
+            "Now propose fixes for ALL issues. "
+            "Use format: row:<N>,col:<name>,fix:<corrected_value>"
+        )
+
     return "\n\n".join(parts)
 
 
@@ -170,7 +198,6 @@ def parse_llm_response(response: str) -> list[str]:
         line = line.strip()
         if not line:
             continue
-        # Remove numbering like "1. " or "- " or "* "
         line = re.sub(r"^\s*[\d]+[.\)]\s*", "", line)
         line = re.sub(r"^\s*[-*]\s*", "", line)
         line = line.strip()
@@ -186,8 +213,60 @@ def parse_llm_response(response: str) -> list[str]:
     return issues
 
 
+def parse_fix_response(response: str) -> list[str]:
+    """Extract fix lines from LLM response."""
+    fixes = []
+    for line in response.strip().split("\n"):
+        line = line.strip()
+        if not line:
+            continue
+        line = re.sub(r"^\s*[\d]+[.\)]\s*", "", line)
+        line = re.sub(r"^\s*[-*]\s*", "", line)
+        line = line.strip()
+        if "row" in line.lower() and "fix" in line.lower():
+            match = re.search(
+                r"row\s*[:=]\s*(\d+)\s*[,;\s]+col(?:umn)?\s*[:=]\s*([\w_]+)\s*[,;\s]+fix\s*[:=]\s*(.+?)$",
+                line,
+                re.IGNORECASE,
+            )
+            if match:
+                normalized = f"row:{match.group(1)},col:{match.group(2).lower()},fix:{match.group(3).strip()}"
+                fixes.append(normalized)
+    return fixes
+
+
+def call_llm(client: OpenAI, system_prompt: str, user_prompt: str) -> str:
+    """Call the LLM with retry on rate limit."""
+    for attempt in range(3):
+        try:
+            response = client.chat.completions.create(
+                model=MODEL_NAME,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt},
+                ],
+                temperature=0.1,
+                max_tokens=2048,
+            )
+            return response.choices[0].message.content or ""
+        except Exception as e:
+            if "rate_limit" in str(e).lower() or "429" in str(e):
+                wait = 10 * (attempt + 1)
+                print(f"[DEBUG] Rate limited, waiting {wait}s...", file=sys.stderr, flush=True)
+                time.sleep(wait)
+            else:
+                print(f"[DEBUG] LLM call failed: {e}", file=sys.stderr, flush=True)
+                return ""
+    return ""
+
+
 def run_task(client: OpenAI, env: EnvHTTPClient, task_id: str) -> float:
-    """Run a single task and return the best score."""
+    """
+    Run a single task with two-phase strategy:
+      Step 1: Identify issues only
+      Step 2: Identify + Fix (using feedback from step 1)
+      Step 3: Refined identify + fix (if needed)
+    """
     log_start(task=task_id, env=BENCHMARK, model=MODEL_NAME)
 
     rewards: List[float] = []
@@ -196,48 +275,38 @@ def run_task(client: OpenAI, env: EnvHTTPClient, task_id: str) -> float:
     success = False
 
     try:
-        # Reset environment for this task
         reset_response = env.reset(task_id=task_id)
         observation = reset_response.get("observation", reset_response)
 
-        messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+        last_issues: list[str] = []
+        last_llm_output = ""
 
         for step_num in range(1, MAX_STEPS_PER_TASK + 1):
-            user_prompt = build_user_prompt(observation)
-            messages_for_call = messages + [{"role": "user", "content": user_prompt}]
-
-            # Call LLM with retry on rate limit
-            llm_output = ""
             error_msg = None
-            for attempt in range(3):
-                try:
-                    response = client.chat.completions.create(
-                        model=MODEL_NAME,
-                        messages=messages_for_call,
-                        temperature=0.1,
-                        max_tokens=2048,
-                    )
-                    llm_output = response.choices[0].message.content or ""
-                    break
-                except Exception as e:
-                    if "rate_limit" in str(e).lower() or "429" in str(e):
-                        wait = 10 * (attempt + 1)
-                        print(f"[DEBUG] Rate limited, waiting {wait}s...", file=sys.stderr, flush=True)
-                        time.sleep(wait)
-                    else:
-                        error_msg = str(e)
-                        print(f"[DEBUG] LLM call failed: {e}", file=sys.stderr, flush=True)
-                        break
 
-            # Parse issues from LLM response
-            issues = parse_llm_response(llm_output)
-            action_str = ";".join(issues) if issues else "none"
+            # ── Phase 1: Identify issues ──
+            user_prompt = build_user_prompt(observation)
+            identify_output = call_llm(client, IDENTIFY_SYSTEM_PROMPT, user_prompt)
+            issues = parse_llm_response(identify_output)
 
             if not issues and not error_msg:
                 error_msg = "no issues parsed from LLM response"
 
-            # Submit to environment
-            step_response = env.step(issues, task_id=task_id)
+            # ── Phase 2: Propose fixes (from step 2 onward, or always if we have issues) ──
+            fixes: list[str] = []
+            if issues and step_num >= 2:
+                # Build a fix prompt that includes the identified issues
+                fix_prompt = build_user_prompt(observation, include_fixes=True)
+                fix_prompt += f"\n\nISSUES FOUND:\n" + "\n".join(issues)
+                fix_output = call_llm(client, FIX_SYSTEM_PROMPT, fix_prompt)
+                fixes = parse_fix_response(fix_output)
+
+            # ── Submit to environment ──
+            action_str = ";".join(issues[:5]) if issues else "none"
+            if fixes:
+                action_str += "|fixes:" + ";".join(fixes[:3])
+
+            step_response = env.step(issues, fixes, task_id=task_id)
             observation = step_response.get("observation", step_response)
 
             reward = float(step_response.get("reward", 0.0) or 0.0)
@@ -257,9 +326,8 @@ def run_task(client: OpenAI, env: EnvHTTPClient, task_id: str) -> float:
             if done:
                 break
 
-            # Add context for next attempt
-            messages.append({"role": "user", "content": user_prompt})
-            messages.append({"role": "assistant", "content": llm_output})
+            last_issues = issues
+            last_llm_output = identify_output
 
         success = best_score >= 0.5
 
@@ -279,21 +347,18 @@ def main():
     print(f"[DEBUG] API_BASE_URL={API_BASE_URL}", file=sys.stderr, flush=True)
     print(f"[DEBUG] MODEL_NAME={MODEL_NAME}", file=sys.stderr, flush=True)
 
-    # Initialize clients
     env = EnvHTTPClient(ENV_URL)
     llm_client = OpenAI(
         base_url=API_BASE_URL,
         api_key=API_KEY or "no-key",
     )
 
-    # Check environment health
     if not env.health():
         print("[DEBUG] Environment is not healthy. Exiting.", file=sys.stderr, flush=True)
         sys.exit(1)
 
     print(f"[DEBUG] Environment is healthy", file=sys.stderr, flush=True)
 
-    # Run all tasks
     scores = {}
     for task_id in TASKS:
         try:
@@ -303,7 +368,6 @@ def main():
             print(f"[DEBUG] Task {task_id} failed: {e}", file=sys.stderr, flush=True)
             scores[task_id] = 0.0
 
-    # Summary to stderr (stdout is reserved for structured logs only)
     avg_score = sum(scores.values()) / len(scores) if scores else 0.0
     print(f"\n[DEBUG] FINAL RESULTS: {scores} avg={avg_score:.3f}", file=sys.stderr, flush=True)
 

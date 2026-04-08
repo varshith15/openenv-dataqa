@@ -151,8 +151,8 @@ class TestRegisterTask:
 
 
 class TestCustomTaskInEnvironment:
-    def test_full_lifecycle(self):
-        """Custom task works end-to-end in the environment."""
+    def test_full_lifecycle_identify_only(self):
+        """Custom task works end-to-end with identify-only."""
         task = create_task_from_config(
             task_id="e2e_custom",
             name="E2E Custom",
@@ -171,7 +171,6 @@ class TestCustomTaskInEnvironment:
         obs = env.reset(task_id="e2e_custom")
         assert obs.num_issues_hint == 2
 
-        # Submit correct answers
         action = DataQAAction(
             issues=[i.to_key() for i in task.planted_issues],
             task_id="e2e_custom",
@@ -180,6 +179,37 @@ class TestCustomTaskInEnvironment:
         assert obs.done is True
         assert obs.reward >= 0.999
 
-        # Cleanup
         from dataqa_env.server.tasks import TASK_REGISTRY
         del TASK_REGISTRY["e2e_custom"]
+
+    def test_full_lifecycle_identify_and_fix(self):
+        """Custom task works end-to-end with both identify and fix."""
+        task = create_task_from_config(
+            task_id="e2e_fix",
+            name="E2E Fix",
+            description="End-to-end test with fixes",
+            schema_description="id: int, name: str, score: int",
+            validation_rules="No missing values",
+            clean_csv=SIMPLE_CSV,
+            contaminations=[
+                {"rule": "missing_value", "row": 0, "col": 1, "difficulty": 1.0},
+            ],
+        )
+        register_task("e2e_fix", lambda seed: task)
+
+        env = DataQAEnvironment()
+        env.reset(task_id="e2e_fix")
+
+        # Submit issues + fix
+        action = DataQAAction(
+            issues=[task.planted_issues[0].to_key()],
+            fixes=["row:1,col:name,fix:Alice"],  # clean value is "Alice"
+            task_id="e2e_fix",
+        )
+        obs = env.step(action)
+        assert obs.done is True
+        assert obs.metadata["fix_score"] > 0.0
+        assert obs.metadata["combined_reward"] > 0.0
+
+        from dataqa_env.server.tasks import TASK_REGISTRY
+        del TASK_REGISTRY["e2e_fix"]

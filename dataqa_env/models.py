@@ -16,21 +16,23 @@ from openenv.core.env_server.interfaces import Action, Observation, State
 
 class DataQAAction(Action):
     """
-    Agent submits a list of identified data quality issues.
+    Agent submits identified issues AND optional proposed fixes.
 
-    Each issue is a string in the format: "row:<row_idx>,col:<col_name>,issue:<issue_type>"
+    Two-phase action space:
+      Phase 1 (Identify): List issues in format "row:<N>,col:<name>,issue:<type>"
+      Phase 2 (Fix):      List fixes in format "row:<N>,col:<name>,fix:<proposed_value>"
+
+    The agent can submit both in the same step or across multiple steps.
+    Combined reward = 0.6 * identify_score + 0.4 * fix_score
+
     Supported issue types:
-        - missing_value
-        - wrong_type
-        - duplicate_row
-        - out_of_range
-        - format_violation
-        - inconsistent_value
-        - statistical_outlier
-        - referential_integrity
+        missing_value, wrong_type, duplicate_row, out_of_range,
+        format_violation, inconsistent_value, statistical_outlier,
+        referential_integrity
     """
 
     issues: List[str]
+    fixes: List[str] = []
     # Include task_id so step() can reconstruct context in stateless HTTP mode
     task_id: str = "easy"
 
