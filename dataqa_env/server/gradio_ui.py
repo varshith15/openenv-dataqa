@@ -20,6 +20,9 @@ from ..models import DataQAAction
 # ── Pre-built agent trajectories (simulates baseline agent) ──
 
 AGENT_TRAJECTORIES = {
+    # Demo trajectories: fixes are ONLY proposed where the correct value
+    # is logically inferrable (computable, format conversion, or deducible from context).
+    # Ambiguous fixes (any valid salary, any past date) are NOT proposed.
     "easy": [
         {
             "issues": [
@@ -41,11 +44,15 @@ AGENT_TRAJECTORIES = {
                 "row:18,col:start_date,issue:out_of_range",
             ],
             "fixes": [
+                # Inferrable: name "David Kim" deduced from email david.kim@company.com
                 "row:4,col:name,fix:David Kim",
+                # Inferrable: "seventy-five thousand" is clearly 75000
                 "row:7,col:salary,fix:75000",
-                "row:9,col:salary,fix:73000",
+                # Inferrable: email must match name pattern oscar.rivera@company.com
                 "row:15,col:email,fix:oscar.rivera@company.com",
-                "row:18,col:start_date,fix:2022-01-19",
+                # NOT proposed: row:9 salary (any valid salary 50000-150000 works)
+                # NOT proposed: row:18 start_date (any past date works)
+                # NOT proposed: row:21 duplicate (remove or reassign — ambiguous)
             ],
         },
     ],
@@ -74,12 +81,17 @@ AGENT_TRAJECTORIES = {
                 "row:29,col:order_date,issue:inconsistent_value",
             ],
             "fixes": [
+                # Inferrable: total = qty(1) * price(42.00) = 42.00
                 "row:5,col:total,fix:42.00",
+                # Inferrable: "Fitness" is closest to "Sports" in allowed categories
                 "row:10,col:category,fix:Sports",
+                # Inferrable: 26/01/2024 reformatted to YYYY-MM-DD
                 "row:12,col:order_date,fix:2024-01-26",
-                "row:14,col:product_name,fix:LED Strip Lights",
-                "row:24,col:shipping_country,fix:US",
-                "row:29,col:order_date,fix:2024-02-12",
+                # NOT proposed: row:14 product_name (any product name works)
+                # NOT proposed: row:17 quantity (any positive int)
+                # NOT proposed: row:19 duplicate order_id (reassign — ambiguous)
+                # NOT proposed: row:24 country (could be any valid ISO code)
+                # NOT proposed: row:29 future date (any past date works)
             ],
         },
     ],
@@ -108,11 +120,18 @@ AGENT_TRAJECTORIES = {
                 "row:12,col:test_accuracy,issue:statistical_outlier",
             ],
             "fixes": [
-                "row:14,col:training_time_hours,fix:72.0",
-                "row:13,col:learning_rate,fix:0.00001",
-                "row:15,col:model_name,fix:whisper-small",
+                # Inferrable: batch_size 250 → nearest power of 2 = 256
                 "row:9,col:batch_size,fix:256",
-                "row:9,col:training_time_hours,fix:36.0",
+                # Inferrable: negative time -72.0 → absolute value 72.0
+                "row:14,col:training_time_hours,fix:72.0",
+                # NOT proposed: row:13 LR (any valid LR 1e-7 to 1.0)
+                # NOT proposed: row:15 model_name (could be any model)
+                # NOT proposed: row:5 val_loss (any val >= train_loss)
+                # NOT proposed: row:7 GPU memory (any reasonable value)
+                # NOT proposed: row:10 train_size (any value > test_size)
+                # NOT proposed: row:11 timestamp (any date after prev)
+                # NOT proposed: row:9 training_time (any reasonable hours)
+                # NOT proposed: row:12 test_accuracy (any < SOTA)
             ],
         },
     ],
@@ -120,34 +139,40 @@ AGENT_TRAJECTORIES = {
         {
             "issues": [
                 "row:6,col:response,issue:inconsistent_value",
-                "row:15,col:language,issue:inconsistent_value",
-                "row:17,col:instruction,issue:missing_value",
-                "row:19,col:response,issue:inconsistent_value",
-                "row:21,col:instruction,issue:duplicate_row",
-                "row:23,col:response,issue:missing_value",
+                "row:15,col:response,issue:inconsistent_value",
+                "row:28,col:prompt,issue:missing_value",
+                "row:20,col:response,issue:inconsistent_value",
+                "row:7,col:prompt,issue:duplicate_row",
+                "row:25,col:response,issue:missing_value",
                 "row:3,col:response,issue:inconsistent_value",
             ],
             "fixes": [],
         },
         {
             "issues": [
+                "row:3,col:response,issue:inconsistent_value",
                 "row:4,col:response,issue:inconsistent_value",
                 "row:6,col:response,issue:inconsistent_value",
+                "row:7,col:prompt,issue:duplicate_row",
                 "row:8,col:response,issue:inconsistent_value",
-                "row:10,col:response,issue:inconsistent_value",
                 "row:11,col:response,issue:inconsistent_value",
-                "row:15,col:language,issue:inconsistent_value",
-                "row:17,col:instruction,issue:missing_value",
-                "row:19,col:response,issue:inconsistent_value",
-                "row:21,col:instruction,issue:duplicate_row",
-                "row:23,col:response,issue:missing_value",
-                "row:24,col:response,issue:inconsistent_value",
-                "row:3,col:response,issue:inconsistent_value",
+                "row:15,col:response,issue:inconsistent_value",
+                "row:17,col:helpfulness,issue:inconsistent_value",
+                "row:20,col:response,issue:inconsistent_value",
+                "row:25,col:response,issue:missing_value",
+                "row:28,col:prompt,issue:missing_value",
+                "row:29,col:response,issue:inconsistent_value",
             ],
             "fixes": [
-                "row:6,col:response,fix:The scientific name for the flower commonly called a cherry blossom is Prunus serrulata. It can be found in white pink and red colors.",
+                # Inferrable: Salvator Mundi facts are well-known ($450.3M at Christie's)
                 "row:4,col:response,fix:The most expensive painting ever sold at auction is Salvator Mundi by Leonardo da Vinci. It was sold for $450.3 million at Christie's in New York City in 2017.",
-                "row:20,col:response,fix:Five animals that live in grasslands are lions zebras cheetahs gazelles and hyenas. These animals live in grasslands to access the food water and shade that grasslands provide.",
+                # Inferrable: strip leaked [SYSTEM] prompt prefix
+                "row:3,col:response,fix:Kitsch is art or design that is overly sentimental or ornate while camp is a style that is over-the-top and exaggerated often used in satire or irony.",
+                # NOT proposed: row:6 wrong scientific name (need taxonomy knowledge)
+                # NOT proposed: row:8 harmful advice (need to write safe version)
+                # NOT proposed: row:11 self-contradiction (need to rewrite coherently)
+                # NOT proposed: row:15 French response (need English translation)
+                # NOT proposed: row:29 hallucinated citation (need factual replacement)
             ],
         },
     ],
