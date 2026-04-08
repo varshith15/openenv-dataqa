@@ -19,6 +19,17 @@ app = create_app(
 )
 
 
+@app.get("/")
+def root():
+    """Root endpoint — environment info."""
+    return {
+        "name": "DataQA Environment",
+        "description": "Two-phase data quality assurance environment: identify issues + propose fixes",
+        "tasks": ["easy", "medium", "hard"],
+        "endpoints": ["/health", "/reset", "/step", "/state"],
+    }
+
+
 def main():
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=7860)
