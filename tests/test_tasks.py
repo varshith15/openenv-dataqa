@@ -187,7 +187,7 @@ class TestTaskAlignment:
 class TestTaskRegistry:
     def test_list_tasks(self):
         tasks = list_tasks()
-        assert set(tasks) == {"easy", "medium", "hard", "alignment"}
+        assert set(tasks) == {"easy", "medium", "hard", "alignment", "coding", "toolcalling"}
 
     def test_get_task_easy(self):
         task = get_task("easy")

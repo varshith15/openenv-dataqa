@@ -688,6 +688,337 @@ def create_task_alignment(seed: int = 42) -> Task:
 
 
 # ---------------------------------------------------------------------------
+# TASK 5: Coding — Code instruction/response quality issues
+# ---------------------------------------------------------------------------
+
+def create_task_coding(seed: int = 42) -> Task:
+    rng = random.Random(seed)
+
+    clean_csv = """id,instruction,language,difficulty,response,test_cases,is_correct,category
+1,"Write a function to check if a number is prime.",python,easy,"def is_prime(n):\n    if n < 2:\n        return False\n    for i in range(2, int(n**0.5) + 1):\n        if n % i == 0:\n            return False\n    return True","assert is_prime(2)==True; assert is_prime(4)==False; assert is_prime(17)==True",true,algorithms
+2,"Implement binary search on a sorted array.",python,medium,"def binary_search(arr, target):\n    lo, hi = 0, len(arr) - 1\n    while lo <= hi:\n        mid = (lo + hi) // 2\n        if arr[mid] == target:\n            return mid\n        elif arr[mid] < target:\n            lo = mid + 1\n        else:\n            hi = mid - 1\n    return -1","assert binary_search([1,3,5,7],5)==2; assert binary_search([1,3,5,7],4)==-1",true,algorithms
+3,"Write a function to reverse a linked list.",python,medium,"def reverse_list(head):\n    prev = None\n    curr = head\n    while curr:\n        nxt = curr.next\n        curr.next = prev\n        prev = curr\n        curr = nxt\n    return prev","# requires ListNode class setup",true,data_structures
+4,"Create a REST API endpoint that returns user data.",python,medium,"from flask import Flask, jsonify\napp = Flask(__name__)\n\n@app.route('/users/<int:uid>')\ndef get_user(uid):\n    users = {1: {'name': 'Alice'}, 2: {'name': 'Bob'}}\n    return jsonify(users.get(uid, {}))","curl localhost:5000/users/1 -> {'name': 'Alice'}",true,web
+5,"Implement a stack using two queues.",python,medium,"from collections import deque\nclass Stack:\n    def __init__(self):\n        self.q1 = deque()\n        self.q2 = deque()\n    def push(self, x):\n        self.q2.append(x)\n        while self.q1:\n            self.q2.append(self.q1.popleft())\n        self.q1, self.q2 = self.q2, self.q1\n    def pop(self):\n        return self.q1.popleft()\n    def top(self):\n        return self.q1[0]","s=Stack(); s.push(1); s.push(2); assert s.top()==2; s.pop(); assert s.top()==1",true,data_structures
+6,"Write a SQL query to find the second highest salary.",sql,easy,"SELECT MAX(salary) FROM employees WHERE salary < (SELECT MAX(salary) FROM employees)","Expected: returns second highest value",true,databases
+7,"Implement merge sort.",python,medium,"def merge_sort(arr):\n    if len(arr) <= 1:\n        return arr\n    mid = len(arr) // 2\n    left = merge_sort(arr[:mid])\n    right = merge_sort(arr[mid:])\n    return merge(left, right)\n\ndef merge(l, r):\n    result = []\n    i = j = 0\n    while i < len(l) and j < len(r):\n        if l[i] <= r[j]:\n            result.append(l[i]); i += 1\n        else:\n            result.append(r[j]); j += 1\n    result.extend(l[i:])\n    result.extend(r[j:])\n    return result","assert merge_sort([3,1,4,1,5])==[1,1,3,4,5]",true,algorithms
+8,"Write a function to validate an email address.",python,easy,"import re\ndef is_valid_email(email):\n    pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$'\n    return bool(re.match(pattern, email))","assert is_valid_email('test@example.com')==True; assert is_valid_email('bad')==False",true,strings
+9,"Implement a LRU cache with O(1) get and put.",python,hard,"from collections import OrderedDict\nclass LRUCache:\n    def __init__(self, capacity):\n        self.cache = OrderedDict()\n        self.capacity = capacity\n    def get(self, key):\n        if key not in self.cache:\n            return -1\n        self.cache.move_to_end(key)\n        return self.cache[key]\n    def put(self, key, value):\n        if key in self.cache:\n            self.cache.move_to_end(key)\n        self.cache[key] = value\n        if len(self.cache) > self.capacity:\n            self.cache.popitem(last=False)","c=LRUCache(2); c.put(1,1); c.put(2,2); assert c.get(1)==1; c.put(3,3); assert c.get(2)==-1",true,data_structures
+10,"Write a function to find all permutations of a string.",python,medium,"def permutations(s):\n    if len(s) <= 1:\n        return [s]\n    result = []\n    for i, c in enumerate(s):\n        for perm in permutations(s[:i] + s[i+1:]):\n            result.append(c + perm)\n    return result","assert sorted(permutations('ab'))==['ab','ba']",true,algorithms
+11,"Implement depth-first search on a graph.",python,medium,"def dfs(graph, start, visited=None):\n    if visited is None:\n        visited = set()\n    visited.add(start)\n    for neighbor in graph.get(start, []):\n        if neighbor not in visited:\n            dfs(graph, neighbor, visited)\n    return visited","g={'A':['B','C'],'B':['D'],'C':[],'D':[]}; assert dfs(g,'A')=={'A','B','C','D'}",true,algorithms
+12,"Write a function to check balanced parentheses.",python,easy,"def is_balanced(s):\n    stack = []\n    mapping = {')':'(', '}':'{', ']':'['}\n    for c in s:\n        if c in mapping.values():\n            stack.append(c)\n        elif c in mapping:\n            if not stack or stack[-1] != mapping[c]:\n                return False\n            stack.pop()\n    return len(stack) == 0","assert is_balanced('([]){}')==True; assert is_balanced('([)]')==False",true,strings
+13,"Create a decorator that caches function results.",python,medium,"from functools import wraps\ndef memoize(func):\n    cache = {}\n    @wraps(func)\n    def wrapper(*args):\n        if args not in cache:\n            cache[args] = func(*args)\n        return cache[args]\n    return wrapper","@memoize\ndef fib(n): return n if n<2 else fib(n-1)+fib(n-2)\nassert fib(10)==55",true,design_patterns
+14,"Implement quicksort.",python,medium,"def quicksort(arr):\n    if len(arr) <= 1:\n        return arr\n    pivot = arr[len(arr)//2]\n    left = [x for x in arr if x < pivot]\n    middle = [x for x in arr if x == pivot]\n    right = [x for x in arr if x > pivot]\n    return quicksort(left) + middle + quicksort(right)","assert quicksort([3,6,8,10,1,2,1])==[1,1,2,3,6,8,10]",true,algorithms
+15,"Write a function to detect a cycle in a linked list.",python,medium,"def has_cycle(head):\n    slow = fast = head\n    while fast and fast.next:\n        slow = slow.next\n        fast = fast.next.next\n        if slow == fast:\n            return True\n    return False","# requires ListNode class with cycle setup",true,data_structures
+16,"Implement a trie (prefix tree).",python,hard,"class TrieNode:\n    def __init__(self):\n        self.children = {}\n        self.is_end = False\n\nclass Trie:\n    def __init__(self):\n        self.root = TrieNode()\n    def insert(self, word):\n        node = self.root\n        for c in word:\n            if c not in node.children:\n                node.children[c] = TrieNode()\n            node = node.children[c]\n        node.is_end = True\n    def search(self, word):\n        node = self.root\n        for c in word:\n            if c not in node.children:\n                return False\n            node = node.children[c]\n        return node.is_end","t=Trie(); t.insert('apple'); assert t.search('apple')==True; assert t.search('app')==False",true,data_structures
+17,"Write a function that flattens a nested list.",python,easy,"def flatten(lst):\n    result = []\n    for item in lst:\n        if isinstance(item, list):\n            result.extend(flatten(item))\n        else:\n            result.append(item)\n    return result","assert flatten([1,[2,[3,4],5]])==[1,2,3,4,5]",true,algorithms
+18,"Implement a basic calculator that evaluates +,-,*,/ with parentheses.",python,hard,"def calculate(s):\n    def helper(tokens):\n        stack = []\n        num = 0\n        sign = '+'\n        while tokens:\n            t = tokens.pop(0)\n            if t.isdigit():\n                num = num * 10 + int(t)\n            if t == '(':\n                num = helper(tokens)\n            if t in '+-*/)' or not tokens:\n                if sign == '+': stack.append(num)\n                elif sign == '-': stack.append(-num)\n                elif sign == '*': stack.append(stack.pop() * num)\n                elif sign == '/': stack.append(int(stack.pop() / num))\n                num = 0\n                sign = t\n            if t == ')':\n                break\n        return sum(stack)\n    return helper(list(s.replace(' ', '')))","assert calculate('3+2*2')==7; assert calculate('(1+2)*3')==9",true,algorithms
+19,"Write a thread-safe singleton pattern in Python.",python,hard,"import threading\nclass Singleton:\n    _instance = None\n    _lock = threading.Lock()\n    def __new__(cls):\n        if cls._instance is None:\n            with cls._lock:\n                if cls._instance is None:\n                    cls._instance = super().__new__(cls)\n        return cls._instance","s1=Singleton(); s2=Singleton(); assert s1 is s2",true,design_patterns
+20,"Implement Dijkstra's shortest path algorithm.",python,hard,"import heapq\ndef dijkstra(graph, start):\n    dist = {node: float('inf') for node in graph}\n    dist[start] = 0\n    pq = [(0, start)]\n    while pq:\n        d, u = heapq.heappop(pq)\n        if d > dist[u]:\n            continue\n        for v, w in graph[u]:\n            if dist[u] + w < dist[v]:\n                dist[v] = dist[u] + w\n                heapq.heappush(pq, (dist[v], v))\n    return dist","g={'A':[('B',1),('C',4)],'B':[('C',2)],'C':[]}; assert dijkstra(g,'A')=={'A':0,'B':1,'C':3}",true,algorithms"""
+
+    schema_desc = """Columns:
+- id: integer, unique, sequential starting from 1
+- instruction: string, non-empty, describes a coding task
+- language: string, one of [python, javascript, sql, java, cpp, rust, go]
+- difficulty: string, one of [easy, medium, hard]
+- response: string, non-empty, contains code that solves the instruction
+- test_cases: string, non-empty, contains assertions or test descriptions
+- is_correct: boolean (true/false), whether the response correctly solves the instruction
+- category: string, one of [algorithms, data_structures, strings, web, databases, design_patterns]"""
+
+    rules = """1. No missing values in any column
+2. id must be unique and sequential
+3. language must be a valid programming language from the allowed set
+4. response code must be in the language specified by the language column
+5. is_correct must be 'true' if and only if the code actually solves the problem correctly
+6. difficulty must reflect the actual complexity of the task
+7. response must be syntactically valid code (no truncation or syntax errors)
+8. test_cases must be relevant to the instruction
+9. No duplicate instructions (same problem stated differently counts as duplicate)
+10. category must match the actual nature of the problem"""
+
+    rows = _csv_to_rows(clean_csv)
+    header = rows[0]
+    data = rows[1:]
+    issues: List[PlantedIssue] = []
+
+    # Issue 1: Response has syntax error but is_correct=true (difficulty 2.0)
+    # Row 3 (reverse linked list) — introduce unbalanced parenthesis
+    r = 2  # 0-indexed -> row 3
+    data[r][4] = "def reverse_list(head):\n    prev = None\n    curr = head\n    while curr:\n        nxt = curr.next\n        curr.next = prev\n        prev = curr\n        curr = nxt\n    return prev)"  # extra closing paren
+    issues.append(PlantedIssue(
+        row=r + 1, col="response", issue_type="format_violation",
+        description="Syntax error: unbalanced parenthesis in response but is_correct=true",
+        difficulty=2.0))
+
+    # Issue 2: Wrong language — response is JavaScript but language says python (difficulty 2.5)
+    # Row 8 (email validation)
+    r = 7
+    data[r][4] = "function isValidEmail(email) {\n    const pattern = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$/;\n    return pattern.test(email);\n}"
+    issues.append(PlantedIssue(
+        row=r + 1, col="response", issue_type="inconsistent_value",
+        description="Response is JavaScript but language column says python",
+        difficulty=2.5))
+
+    # Issue 3: Truncated response — code cut off mid-function (difficulty 2.0)
+    # Row 18 (basic calculator)
+    r = 17
+    data[r][4] = "def calculate(s):\n    def helper(tokens):\n        stack = []\n        num = 0\n        sign = '+'\n        while tokens:\n            t = tokens.pop(0)\n            if t.isdigit():\n                num = num"  # truncated
+    issues.append(PlantedIssue(
+        row=r + 1, col="response", issue_type="format_violation",
+        description="Response truncated mid-expression — incomplete code",
+        difficulty=2.0))
+
+    # Issue 4: is_correct=true but code has logic bug (difficulty 3.0)
+    # Row 2 (binary search) — off-by-one: lo = mid instead of mid + 1
+    r = 1
+    data[r][4] = "def binary_search(arr, target):\n    lo, hi = 0, len(arr) - 1\n    while lo <= hi:\n        mid = (lo + hi) // 2\n        if arr[mid] == target:\n            return mid\n        elif arr[mid] < target:\n            lo = mid\n        else:\n            hi = mid - 1\n    return -1"
+    data[r][6] = "true"  # claims correct but has infinite loop bug
+    issues.append(PlantedIssue(
+        row=r + 1, col="is_correct", issue_type="inconsistent_value",
+        description="is_correct=true but binary search has off-by-one bug (lo=mid causes infinite loop)",
+        difficulty=3.0))
+
+    # Issue 5: SQL response for a python-labeled task (difficulty 2.0)
+    # Row 6 is SQL task — change language to python but keep SQL response
+    r = 5
+    data[r][2] = "python"
+    issues.append(PlantedIssue(
+        row=r + 1, col="language", issue_type="inconsistent_value",
+        description="Language says python but response is SQL query",
+        difficulty=2.0))
+
+    # Issue 6: Difficulty mismatch — trivial problem labeled hard (difficulty 2.5)
+    # Row 17 (flatten nested list) is easy, change to hard
+    r = 16
+    data[r][3] = "hard"
+    issues.append(PlantedIssue(
+        row=r + 1, col="difficulty", issue_type="inconsistent_value",
+        description="Flatten nested list is a simple recursion but labeled as hard",
+        difficulty=2.5))
+
+    # Issue 7: Missing test cases — empty string (difficulty 1.0)
+    r = 12
+    data[r][5] = ""
+    issues.append(PlantedIssue(
+        row=r + 1, col="test_cases", issue_type="missing_value",
+        description="Empty test_cases field for memoize decorator",
+        difficulty=1.0))
+
+    # Issue 8: Security vulnerability in response rated is_correct=true (difficulty 3.0)
+    # Row 4 (REST API) — add eval() of user input
+    r = 3
+    data[r][4] = "from flask import Flask, jsonify, request\napp = Flask(__name__)\n\n@app.route('/users/<uid>')\ndef get_user(uid):\n    users = {1: {'name': 'Alice'}, 2: {'name': 'Bob'}}\n    user_id = eval(uid)\n    return jsonify(users.get(user_id, {}))"
+    issues.append(PlantedIssue(
+        row=r + 1, col="response", issue_type="inconsistent_value",
+        description="Response uses eval() on user input — critical security vulnerability (code injection) but is_correct=true",
+        difficulty=3.0))
+
+    # Issue 9: Duplicate instruction — row 14 (quicksort) is semantically same as row 7 (merge sort)
+    # Change instruction to match merge sort
+    r = 13
+    data[r][1] = "Implement merge sort algorithm."
+    issues.append(PlantedIssue(
+        row=r + 1, col="instruction", issue_type="duplicate_row",
+        description="Instruction 'Implement merge sort algorithm' duplicates row 7 'Implement merge sort' (semantic duplicate)",
+        difficulty=2.5))
+
+    # Issue 10: Wrong category — Dijkstra labeled as design_patterns (difficulty 1.5)
+    r = 19
+    data[r][7] = "design_patterns"
+    issues.append(PlantedIssue(
+        row=r + 1, col="category", issue_type="inconsistent_value",
+        description="Dijkstra's algorithm categorized as design_patterns instead of algorithms",
+        difficulty=1.5))
+
+    corrupted = _rows_to_csv([header] + data)
+
+    return Task(
+        task_id="coding",
+        name="Code Quality Dataset Validation",
+        description=(
+            "You are given a coding instruction-response dataset used for LLM fine-tuning. "
+            "Find all data quality issues: incorrect labels, language mismatches, logic bugs, "
+            "syntax errors, security vulnerabilities, duplicate instructions, and missing fields. "
+            "Report each issue in the format: row:<row_number>,col:<column_name>,issue:<issue_type>"
+        ),
+        schema_description=schema_desc,
+        validation_rules=rules,
+        clean_csv=clean_csv,
+        planted_issues=issues,
+        corrupted_csv=corrupted,
+        max_steps=3,
+    )
+
+
+# ---------------------------------------------------------------------------
+# TASK 6: Tool-calling — Function definition and call quality issues
+# ---------------------------------------------------------------------------
+
+def create_task_toolcalling(seed: int = 42) -> Task:
+    rng = random.Random(seed)
+
+    clean_csv = """id,function_name,description,parameters_json,required_params,return_type,example_call,example_output,category
+1,get_weather,"Get current weather for a location.","{""location"": ""string"", ""units"": ""string (celsius|fahrenheit)""}","location",object,"{""function"": ""get_weather"", ""arguments"": {""location"": ""San Francisco"", ""units"": ""celsius""}}","{""temp"": 18, ""condition"": ""cloudy""}",information
+2,send_email,"Send an email to a recipient.","{""to"": ""string"", ""subject"": ""string"", ""body"": ""string"", ""cc"": ""string (optional)""}","to,subject,body",object,"{""function"": ""send_email"", ""arguments"": {""to"": ""alice@example.com"", ""subject"": ""Meeting"", ""body"": ""See you at 3pm""}}","{""status"": ""sent"", ""message_id"": ""msg_123""}",communication
+3,search_database,"Query a database with filters.","{""query"": ""string"", ""table"": ""string"", ""limit"": ""integer (default 10)""}","query,table",array,"{""function"": ""search_database"", ""arguments"": {""query"": ""age > 25"", ""table"": ""users"", ""limit"": 5}}","[{""name"": ""Alice"", ""age"": 30}]",data
+4,create_calendar_event,"Create a new calendar event.","{""title"": ""string"", ""start_time"": ""string (ISO 8601)"", ""end_time"": ""string (ISO 8601)"", ""attendees"": ""array of strings (optional)""}","title,start_time,end_time",object,"{""function"": ""create_calendar_event"", ""arguments"": {""title"": ""Team Sync"", ""start_time"": ""2024-03-15T10:00:00Z"", ""end_time"": ""2024-03-15T11:00:00Z""}}","{""event_id"": ""evt_456"", ""status"": ""created""}",scheduling
+5,translate_text,"Translate text between languages.","{""text"": ""string"", ""source_lang"": ""string (ISO 639-1)"", ""target_lang"": ""string (ISO 639-1)""}","text,target_lang",object,"{""function"": ""translate_text"", ""arguments"": {""text"": ""Hello world"", ""source_lang"": ""en"", ""target_lang"": ""es""}}","{""translated"": ""Hola mundo"", ""confidence"": 0.95}",language
+6,get_stock_price,"Get real-time stock price.","{""symbol"": ""string"", ""exchange"": ""string (optional, default NYSE)""}","symbol",object,"{""function"": ""get_stock_price"", ""arguments"": {""symbol"": ""AAPL""}}","{""price"": 178.52, ""currency"": ""USD"", ""change"": 2.3}",finance
+7,upload_file,"Upload a file to cloud storage.","{""file_path"": ""string"", ""bucket"": ""string"", ""public"": ""boolean (default false)""}","file_path,bucket",object,"{""function"": ""upload_file"", ""arguments"": {""file_path"": ""/data/report.pdf"", ""bucket"": ""my-bucket""}}","{""url"": ""https://storage.example.com/my-bucket/report.pdf"", ""size_bytes"": 1048576}",storage
+8,run_code,"Execute code in a sandboxed environment.","{""code"": ""string"", ""language"": ""string (python|javascript|ruby)"", ""timeout"": ""integer (seconds, default 30)""}","code,language",object,"{""function"": ""run_code"", ""arguments"": {""code"": ""print(2+2)"", ""language"": ""python""}}","{""stdout"": ""4\n"", ""exit_code"": 0}",execution
+9,get_directions,"Get driving/walking directions.","{""origin"": ""string"", ""destination"": ""string"", ""mode"": ""string (driving|walking|transit)""}","origin,destination",object,"{""function"": ""get_directions"", ""arguments"": {""origin"": ""NYC"", ""destination"": ""Boston"", ""mode"": ""driving""}}","{""distance_km"": 346, ""duration_min"": 230, ""steps"": [""Take I-95 N...""]}",navigation
+10,analyze_sentiment,"Analyze sentiment of text.","{""text"": ""string"", ""language"": ""string (optional, default en)""}","text",object,"{""function"": ""analyze_sentiment"", ""arguments"": {""text"": ""I love this product!""}}","{""sentiment"": ""positive"", ""score"": 0.92}",analysis
+11,create_user,"Create a new user account.","{""username"": ""string"", ""email"": ""string"", ""role"": ""string (admin|user|viewer)""}","username,email,role",object,"{""function"": ""create_user"", ""arguments"": {""username"": ""jdoe"", ""email"": ""jdoe@example.com"", ""role"": ""user""}}","{""user_id"": ""usr_789"", ""created"": true}",account
+12,generate_image,"Generate an image from a text prompt.","{""prompt"": ""string"", ""size"": ""string (256x256|512x512|1024x1024)"", ""style"": ""string (optional)""}","prompt",object,"{""function"": ""generate_image"", ""arguments"": {""prompt"": ""sunset over mountains"", ""size"": ""512x512""}}","{""image_url"": ""https://img.example.com/gen_001.png""}",creative
+13,list_files,"List files in a directory.","{""path"": ""string"", ""recursive"": ""boolean (default false)"", ""pattern"": ""string (glob, optional)""}","path",array,"{""function"": ""list_files"", ""arguments"": {""path"": ""/home/user/docs""}}","[""report.pdf"", ""notes.txt""]",filesystem
+14,set_reminder,"Set a timed reminder.","{""message"": ""string"", ""time"": ""string (ISO 8601)"", ""repeat"": ""string (none|daily|weekly, optional)""}","message,time",object,"{""function"": ""set_reminder"", ""arguments"": {""message"": ""Stand up and stretch"", ""time"": ""2024-03-15T15:00:00Z""}}","{""reminder_id"": ""rem_101"", ""status"": ""set""}",scheduling
+15,convert_currency,"Convert between currencies.","{""amount"": ""number"", ""from_currency"": ""string (ISO 4217)"", ""to_currency"": ""string (ISO 4217)""}","amount,from_currency,to_currency",object,"{""function"": ""convert_currency"", ""arguments"": {""amount"": 100, ""from_currency"": ""USD"", ""to_currency"": ""EUR""}}","{""converted"": 91.5, ""rate"": 0.915}",finance
+16,summarize_text,"Summarize a long text.","{""text"": ""string"", ""max_length"": ""integer (optional, default 100)""}","text",object,"{""function"": ""summarize_text"", ""arguments"": {""text"": ""Long article about climate change..."", ""max_length"": 50}}","{""summary"": ""Climate change poses significant challenges...""}",analysis
+17,get_user_info,"Retrieve user profile information.","{""user_id"": ""string""}","user_id",object,"{""function"": ""get_user_info"", ""arguments"": {""user_id"": ""usr_789""}}","{""username"": ""jdoe"", ""email"": ""jdoe@example.com"", ""role"": ""user""}",account
+18,compress_image,"Compress an image to reduce file size.","{""image_url"": ""string"", ""quality"": ""integer (1-100)"", ""format"": ""string (jpeg|png|webp)""}","image_url,quality",object,"{""function"": ""compress_image"", ""arguments"": {""image_url"": ""https://img.example.com/photo.png"", ""quality"": 80}}","{""compressed_url"": ""https://img.example.com/photo_compressed.png"", ""reduction"": ""65%""}",media
+19,execute_trade,"Execute a stock trade.","{""symbol"": ""string"", ""action"": ""string (buy|sell)"", ""quantity"": ""integer"", ""order_type"": ""string (market|limit)"", ""limit_price"": ""number (required if order_type=limit)""}","symbol,action,quantity,order_type",object,"{""function"": ""execute_trade"", ""arguments"": {""symbol"": ""AAPL"", ""action"": ""buy"", ""quantity"": 10, ""order_type"": ""market""}}","{""trade_id"": ""trd_202"", ""status"": ""executed"", ""filled_price"": 178.52}",finance
+20,parse_pdf,"Extract text content from a PDF.","{""url"": ""string"", ""pages"": ""string (optional, e.g. 1-5)""}","url",object,"{""function"": ""parse_pdf"", ""arguments"": {""url"": ""https://docs.example.com/report.pdf""}}","{""text"": ""Annual Report 2024..."", ""page_count"": 12}",data"""
+
+    schema_desc = """Columns:
+- id: integer, unique, sequential starting from 1
+- function_name: string, valid identifier (snake_case), unique
+- description: string, non-empty, describes what the function does
+- parameters_json: string, valid JSON-like parameter schema with types
+- required_params: string, comma-separated parameter names that must be present in example_call
+- return_type: string, one of [object, array, string, number, boolean]
+- example_call: string, valid JSON with "function" matching function_name and "arguments" containing required params
+- example_output: string, valid JSON matching return_type
+- category: string, one of [information, communication, data, scheduling, language, finance, storage, execution, navigation, analysis, account, creative, filesystem, media]"""
+
+    rules = """1. No missing values in any column
+2. id must be unique and sequential
+3. function_name must be unique and match the "function" field in example_call
+4. All required_params must appear as keys in the example_call arguments
+5. Parameter types in parameters_json must match the actual values in example_call
+6. return_type must match the type of example_output
+7. example_call must be valid JSON
+8. example_output must be valid JSON
+9. description must accurately describe what the function does
+10. No hallucinated parameters in example_call that are not defined in parameters_json"""
+
+    rows = _csv_to_rows(clean_csv)
+    header = rows[0]
+    data = rows[1:]
+    issues: List[PlantedIssue] = []
+
+    # Issue 1: Function name mismatch — example_call uses wrong function name (difficulty 2.0)
+    # Row 3 (search_database) — call says "query_database" instead
+    r = 2
+    data[r][6] = '{"function": "query_database", "arguments": {"query": "age > 25", "table": "users", "limit": 5}}'
+    issues.append(PlantedIssue(
+        row=r + 1, col="example_call", issue_type="inconsistent_value",
+        description="example_call function name 'query_database' doesn't match function_name 'search_database'",
+        difficulty=2.0))
+
+    # Issue 2: Missing required parameter in example_call (difficulty 2.5)
+    # Row 4 (create_calendar_event) — missing end_time which is required
+    r = 3
+    data[r][6] = '{"function": "create_calendar_event", "arguments": {"title": "Team Sync", "start_time": "2024-03-15T10:00:00Z"}}'
+    issues.append(PlantedIssue(
+        row=r + 1, col="example_call", issue_type="inconsistent_value",
+        description="Required parameter 'end_time' missing from example_call arguments",
+        difficulty=2.5))
+
+    # Issue 3: Hallucinated parameter — example_call has param not in schema (difficulty 3.0)
+    # Row 10 (analyze_sentiment) — add "model" param not in parameters_json
+    r = 9
+    data[r][6] = '{"function": "analyze_sentiment", "arguments": {"text": "I love this product!", "model": "gpt-4", "confidence_threshold": 0.8}}'
+    issues.append(PlantedIssue(
+        row=r + 1, col="example_call", issue_type="inconsistent_value",
+        description="Hallucinated parameters 'model' and 'confidence_threshold' not defined in parameters_json",
+        difficulty=3.0))
+
+    # Issue 4: Wrong return_type — returns object but labeled as array (difficulty 1.5)
+    # Row 6 (get_stock_price)
+    r = 5
+    data[r][5] = "array"
+    issues.append(PlantedIssue(
+        row=r + 1, col="return_type", issue_type="inconsistent_value",
+        description="return_type says 'array' but example_output is an object",
+        difficulty=1.5))
+
+    # Issue 5: Invalid JSON in example_call (difficulty 2.0)
+    # Row 12 (generate_image) — malformed JSON
+    r = 11
+    data[r][6] = '{"function": "generate_image", "arguments": {"prompt": "sunset over mountains", "size": "512x512"'  # missing closing braces
+    issues.append(PlantedIssue(
+        row=r + 1, col="example_call", issue_type="format_violation",
+        description="Invalid JSON in example_call — missing closing braces",
+        difficulty=2.0))
+
+    # Issue 6: Parameter type mismatch — schema says integer but call passes string (difficulty 2.5)
+    # Row 18 (compress_image) — quality should be integer but passed as string "high"
+    r = 17
+    data[r][6] = '{"function": "compress_image", "arguments": {"image_url": "https://img.example.com/photo.png", "quality": "high"}}'
+    issues.append(PlantedIssue(
+        row=r + 1, col="example_call", issue_type="wrong_type",
+        description="Parameter 'quality' should be integer (1-100) but example_call passes string 'high'",
+        difficulty=2.5))
+
+    # Issue 7: Empty description (difficulty 1.0)
+    r = 15
+    data[r][2] = ""
+    issues.append(PlantedIssue(
+        row=r + 1, col="description", issue_type="missing_value",
+        description="Empty description field for summarize_text function",
+        difficulty=1.0))
+
+    # Issue 8: Duplicate function — row 17 (get_user_info) duplicates row 11 (create_user) in purpose
+    # Change function_name to create_user (duplicate)
+    r = 16
+    data[r][1] = "create_user"
+    issues.append(PlantedIssue(
+        row=r + 1, col="function_name", issue_type="duplicate_row",
+        description="Duplicate function_name 'create_user' — already defined in row 11",
+        difficulty=1.5))
+
+    # Issue 9: Dangerous function without safety description (difficulty 3.0)
+    # Row 19 (execute_trade) — description doesn't mention it's irreversible/dangerous
+    # Change description to misleadingly safe
+    r = 18
+    data[r][2] = "Preview a potential stock trade."
+    issues.append(PlantedIssue(
+        row=r + 1, col="description", issue_type="inconsistent_value",
+        description="Description says 'Preview a potential stock trade' but function actually executes trades (irreversible action mislabeled as preview)",
+        difficulty=3.0))
+
+    # Issue 10: Wrong category (difficulty 1.5)
+    # Row 8 (run_code) labeled as "scheduling" instead of "execution"
+    r = 7
+    data[r][8] = "scheduling"
+    issues.append(PlantedIssue(
+        row=r + 1, col="category", issue_type="inconsistent_value",
+        description="run_code categorized as 'scheduling' instead of 'execution'",
+        difficulty=1.5))
+
+    corrupted = _rows_to_csv([header] + data)
+
+    return Task(
+        task_id="toolcalling",
+        name="Tool-Calling Dataset Validation",
+        description=(
+            "You are given a tool-calling/function-calling dataset used for LLM fine-tuning. "
+            "Find all data quality issues: function name mismatches between definition and call, "
+            "missing required parameters, hallucinated parameters, type mismatches, invalid JSON, "
+            "duplicate functions, and misleading descriptions. "
+            "Report each issue in the format: row:<row_number>,col:<column_name>,issue:<issue_type>"
+        ),
+        schema_description=schema_desc,
+        validation_rules=rules,
+        clean_csv=clean_csv,
+        planted_issues=issues,
+        corrupted_csv=corrupted,
+        max_steps=3,
+    )
+
+
+# ---------------------------------------------------------------------------
 # Contamination rules for extensible task creation
 # ---------------------------------------------------------------------------
 
@@ -813,6 +1144,8 @@ TASK_REGISTRY = {
     "medium": create_task_medium,
     "hard": create_task_hard,
     "alignment": create_task_alignment,
+    "coding": create_task_coding,
+    "toolcalling": create_task_toolcalling,
 }
 
 
