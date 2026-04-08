@@ -262,7 +262,7 @@ class TestDataQAEnvironment:
         assert obs.num_issues_hint == 6
         assert obs.max_steps == 3
         assert obs.done is False
-        assert obs.reward == 0.0
+        assert obs.reward < 0.01  # clamped to 0.001, not exactly 0.0
         assert "fix" in obs.feedback.lower()  # mentions fix phase
 
     def test_reset_medium(self, env):
@@ -318,7 +318,7 @@ class TestDataQAEnvironment:
         env.reset(task_id="easy")
         action = DataQAAction(issues=[], task_id="easy")
         obs = env.step(action)
-        assert obs.reward == 0.0
+        assert obs.reward < 0.01  # clamped to 0.001, not exactly 0.0
 
     def test_step_exhausts_max_steps(self, env):
         env.reset(task_id="easy")

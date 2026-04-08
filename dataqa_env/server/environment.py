@@ -26,6 +26,14 @@ from .tasks import PlantedIssue, Task, get_task, list_tasks
 IDENTIFY_WEIGHT = 0.6
 FIX_WEIGHT = 0.4
 
+# Clamp reward to strict (0, 1) — validators reject exactly 0.0 and 1.0
+REWARD_MIN = 0.001
+REWARD_MAX = 0.999
+
+
+def _clamp_reward(r: float) -> float:
+    return max(REWARD_MIN, min(REWARD_MAX, r))
+
 
 def parse_issue_key(raw: str) -> Optional[str]:
     """
@@ -416,7 +424,7 @@ class DataQAEnvironment(Environment):
             num_issues_hint=len(self._current_task.planted_issues),
             max_steps=self._current_task.max_steps,
             done=False,
-            reward=0.0,
+            reward=_clamp_reward(0.0),
         )
 
     def step(
@@ -596,7 +604,7 @@ class DataQAEnvironment(Environment):
             num_issues_hint=len(self._current_task.planted_issues),
             max_steps=self._state.max_steps,
             done=is_done,
-            reward=self._best_score,
+            reward=_clamp_reward(self._best_score),
             metadata={
                 "identify_f1": identify_f1,
                 "identify_score": identify_score,
