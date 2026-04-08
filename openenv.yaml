@@ -3,4 +3,4 @@ name: dataqa_env
 type: space
 runtime: fastapi
 app: dataqa_env.server.app:app
-port: 7860
+port: 8000
