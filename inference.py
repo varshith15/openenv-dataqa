@@ -39,7 +39,7 @@ API_KEY = os.getenv("HF_TOKEN") or os.getenv("API_KEY")
 ENV_URL = os.getenv("ENV_URL", "http://localhost:8000")
 
 BENCHMARK = "dataqa_env"
-TASKS = ["easy", "medium", "hard", "alignment"]
+TASKS = ["easy", "medium", "hard", "alignment", "moderation"]
 MAX_STEPS_PER_TASK = 3
 
 

@@ -76,6 +76,7 @@ This creates a rich multi-step decision problem where agents must explore datase
 | `medium` | 8 | Intermediate | E-commerce orders (31 rows) | Inconsistent totals, invalid categories, duplicate keys, wrong date formats, invalid country codes, future-date deliveries |
 | `hard` | 10 | Advanced | ML experiment metadata (31 rows) | Data leakage signals, unreasonable GPU memory, impossibly fast training, SOTA-exceeding accuracy, timestamp ordering, whitespace-only fields |
 | `alignment` | 12 | Expert | LLM alignment data (30 rows, NVIDIA HelpSteer) | See below |
+| `moderation` | 10 | Expert | Content moderation (30 rows, OpenAI Moderation) | Mislabeled hate/violence, false positives on clean text, subset rule violations, label range errors |
 
 **Difficulty progression**: Easy issues are individually obvious (empty fields, text in numeric columns). Medium issues require cross-column reasoning (total != qty * price) and set membership checks. Hard issues require ML domain knowledge (val_loss < train_loss = data leakage) and multi-row temporal reasoning.
 
