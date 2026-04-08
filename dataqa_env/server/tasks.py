@@ -612,8 +612,10 @@ def create_task_alignment(seed: int = 42) -> Task:
                                difficulty=2.0))
 
     # Issue 6: Near-duplicate prompt — rephrased but semantically identical to another row
+    # Also change the response to a rephrased gelatin answer to avoid a secondary prompt-response mismatch
     r = 6  # id=7 (centurion duties)
     data[r][1] = "What is gelatin and how is it produced?"  # semantic duplicate of row 1 "What is gelatin made of and how is it made?"
+    data[r][2] = "Gelatin is a protein derived from collagen found in the bones and skin of animals mainly cows and pigs. The production process involves boiling these animal parts to extract collagen which is then processed and dried into powder or sheets for use in food and industrial applications."
     issues.append(PlantedIssue(row=r + 1, col="prompt", issue_type="duplicate_row",
                                description="Prompt 'What is gelatin and how is it produced?' is a semantic duplicate of row 1 'What is gelatin made of and how is it made?' — wastes training compute and biases model",
                                difficulty=2.5))
@@ -640,15 +642,13 @@ def create_task_alignment(seed: int = 42) -> Task:
                                difficulty=3.0))
 
     # Issue 10: Helpfulness score contradicts response quality
-    # Row 17 about most destructive disaster — response is extremely terse for a complex question
+    # Row 17 about most destructive disaster — already terse (2 sentences), inflate helpfulness to 4
     r = 16  # id=17
-    data[r][3] = "4"  # helpfulness=4 but response is just 2 sentences for a nuanced historical question
-    data[r][4] = "4"  # correctness=4 but the answer itself is debatable
-    data[r][2] = "The 1556 Shaanxi earthquake."
-    # This is arguably correct but gives no context, no detail — helpfulness=4 and correctness=4
-    # for a 4-word answer to "most destructive natural disaster" is clearly inflated
+    data[r][3] = "4"  # helpfulness=4 but response is brief and lacks detail for a complex historical question
+    # Only change the helpfulness score — keep original response and correctness intact
+    # to avoid creating unplanted secondary issues
     issues.append(PlantedIssue(row=r + 1, col="helpfulness", issue_type="inconsistent_value",
-                               description="Helpfulness score is 4 but response is only 4 words ('The 1556 Shaanxi earthquake.') with no explanation — score inflated for an unhelpful response",
+                               description="Helpfulness score is 4 but response is only 2 short sentences with no context or analysis — score inflated",
                                difficulty=2.5))
 
     # Issue 11: Whitespace-only prompt (data pipeline artifact)
@@ -722,8 +722,8 @@ def create_task_coding(seed: int = 42) -> Task:
 - language: string, one of [python, javascript, sql, java, cpp, rust, go]
 - difficulty: string, one of [easy, medium, hard]
 - response: string, non-empty, contains code that solves the instruction
-- test_cases: string, non-empty, contains assertions or test descriptions
-- is_correct: boolean (true/false), whether the response correctly solves the instruction
+- test_cases: string, non-empty, contains assertions, test commands, or setup notes for testing
+- is_correct: boolean (true/false), whether the response correctly solves the instruction (security vulnerabilities count as incorrect)
 - category: string, one of [algorithms, data_structures, strings, web, databases, design_patterns]"""
 
     rules = """1. No missing values in any column
@@ -735,7 +735,8 @@ def create_task_coding(seed: int = 42) -> Task:
 7. response must be syntactically valid code (no truncation or syntax errors)
 8. test_cases must be relevant to the instruction
 9. No duplicate instructions (same problem stated differently counts as duplicate)
-10. category must match the actual nature of the problem"""
+10. category must match the actual nature of the problem
+11. response must not contain critical security vulnerabilities (e.g., eval on user input, SQL injection)"""
 
     rows = _csv_to_rows(clean_csv)
     header = rows[0]
@@ -814,13 +815,15 @@ def create_task_coding(seed: int = 42) -> Task:
         description="Response uses eval() on user input — critical security vulnerability (code injection) but is_correct=true",
         difficulty=3.0))
 
-    # Issue 9: Duplicate instruction — row 14 (quicksort) is semantically same as row 7 (merge sort)
-    # Change instruction to match merge sort
+    # Issue 9: Duplicate instruction — row 14 becomes a near-copy of row 7 (merge sort)
+    # Change both instruction AND response to make it a true duplicate (no instruction-response mismatch)
     r = 13
     data[r][1] = "Implement merge sort algorithm."
+    data[r][4] = data[6][4]  # Copy merge sort response from row 7
+    data[r][5] = data[6][5]  # Copy test cases too
     issues.append(PlantedIssue(
         row=r + 1, col="instruction", issue_type="duplicate_row",
-        description="Instruction 'Implement merge sort algorithm' duplicates row 7 'Implement merge sort' (semantic duplicate)",
+        description="Row 14 is a near-duplicate of row 7 (same merge sort instruction and code)",
         difficulty=2.5))
 
     # Issue 10: Wrong category — Dijkstra labeled as design_patterns (difficulty 1.5)
@@ -969,10 +972,11 @@ def create_task_toolcalling(seed: int = 42) -> Task:
         description="Empty description field for summarize_text function",
         difficulty=1.0))
 
-    # Issue 8: Duplicate function — row 17 (get_user_info) duplicates row 11 (create_user) in purpose
-    # Change function_name to create_user (duplicate)
+    # Issue 8: Duplicate function — row 17 (get_user_info) duplicates row 11 (create_user)
+    # Change function_name AND example_call to create_user (avoid secondary mismatch)
     r = 16
     data[r][1] = "create_user"
+    data[r][6] = '{"function": "create_user", "arguments": {"username": "jdoe", "email": "jdoe@example.com", "role": "user"}}'
     issues.append(PlantedIssue(
         row=r + 1, col="function_name", issue_type="duplicate_row",
         description="Duplicate function_name 'create_user' — already defined in row 11",
