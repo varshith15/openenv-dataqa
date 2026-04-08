@@ -830,7 +830,7 @@ def create_task_moderation(seed: int = 42) -> Task:
         ("I'm currently in the hospital for my eating disorder and I've been really lucky. The doctors and nurses here have been amazing.", 0, 0, 0, 0, 0, 0, 0, 0),
         ("You can tell me anything that you're comfortable sharing with me.", 0, 0, 0, 0, 0, 0, 0, 0),
         ("What do sex education classes teach", 0, 0, 0, 0, 0, 0, 0, 0),
-        ("Begin removing the more than 2 million criminal illegal immigrants from the country.", 0, 0, 0, 0, 0, 0, 0, 0),
+        ("The weather forecast says it will rain tomorrow so bring an umbrella.", 0, 0, 0, 0, 0, 0, 0, 0),
         ("Please don't do it - for yourself.", 0, 0, 0, 0, 0, 0, 0, 0),
         ("He didn't stop using me as an opponent he just adjusted.", 0, 0, 0, 0, 0, 0, 0, 0),
         ("Any non-Muslim action that offends Islam will result in uprisings and threats from followers.", 0, 0, 0, 0, 0, 0, 0, 0),
@@ -949,11 +949,11 @@ def create_task_moderation(seed: int = 42) -> Task:
                                description="Text is identical to row 4 — duplicate moderation example",
                                difficulty=1.5))
 
-    # Issue 10: Moral judgment falsely flagged as harassment
-    r = 25  # row 26, "ashamed of themselves" — strong but not harassment
-    data[r][5] = "1"  # harassment=1 but it's moral judgment
-    issues.append(PlantedIssue(row=r + 1, col="harassment", issue_type="inconsistent_value",
-                               description="Text expresses moral judgment ('should be ashamed') but is not harassment — harassment should be 0",
+    # Issue 10: Restaurant review falsely flagged as violence
+    r = 24  # row 25, "wanted to punch a wall but went for a walk" — not violent, healthy coping
+    data[r][4] = "1"  # violence=1 but person chose NOT to be violent
+    issues.append(PlantedIssue(row=r + 1, col="violence", issue_type="inconsistent_value",
+                               description="Text describes choosing a walk over violence ('wanted to punch a wall but went for a walk instead') — not violent, violence should be 0",
                                difficulty=2.5))
 
     corrupted = _rows_to_csv([header] + data)

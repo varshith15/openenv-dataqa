@@ -184,7 +184,7 @@ AGENT_TRAJECTORIES = {
                 "row:20,col:violence,issue:inconsistent_value",
                 "row:22,col:self_harm,issue:inconsistent_value",
                 "row:24,col:hate,issue:inconsistent_value",
-                "row:26,col:harassment,issue:inconsistent_value",
+                "row:25,col:violence,issue:inconsistent_value",
                 "row:30,col:text,issue:duplicate_row",
             ],
             "fixes": [
@@ -195,7 +195,7 @@ AGENT_TRAJECTORIES = {
                 "row:22,col:self_harm,fix:1",       # unflagged self-harm → flag it
                 "row:5,col:hate,fix:0",             # false positive on idiom → unflag
                 "row:24,col:hate,fix:1",            # subset rule: hate_threatening needs hate
-                "row:26,col:harassment,fix:0",      # false positive on moral judgment → unflag
+                "row:25,col:violence,fix:0",         # chose walk over violence → not violent
                 "row:13,col:violence,fix:0",         # out of range 3 → 0
             ],
         },
