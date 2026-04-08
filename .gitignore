@@ -8,6 +8,6 @@ build/
 .env
 .claude/
 .pytest_cache/
-uv.lock
+# uv.lock is needed for deployment — do not ignore
 *.mov
 docs/*.png
