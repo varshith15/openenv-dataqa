@@ -25,6 +25,7 @@ class PlantedIssue:
     col: str
     issue_type: str
     description: str
+    difficulty: float = 1.0  # 1.0=easy, 2.0=medium, 3.0=hard (for weighted reward)
 
     def to_key(self) -> str:
         return f"row:{self.row},col:{self.col},issue:{self.issue_type}"
@@ -93,29 +94,29 @@ def create_task_easy(seed: int = 42) -> Task:
     data = rows[1:]
     issues: List[PlantedIssue] = []
 
-    # Issue 1: Missing value - null out a name
+    # Issue 1: Missing value - null out a name (easy to spot)
     r = 3  # row index in data (0-based), displayed as row 4 in CSV
     data[r][1] = ""
     issues.append(PlantedIssue(row=r + 1, col="name", issue_type="missing_value",
-                               description="Empty name field"))
+                               description="Empty name field", difficulty=1.0))
 
-    # Issue 2: Wrong type - salary as text
+    # Issue 2: Wrong type - salary as text (easy to spot)
     r = 6
     data[r][4] = "seventy-five thousand"
     issues.append(PlantedIssue(row=r + 1, col="salary", issue_type="wrong_type",
-                               description="Salary is text instead of integer"))
+                               description="Salary is text instead of integer", difficulty=1.0))
 
-    # Issue 3: Duplicate row
+    # Issue 3: Duplicate row (moderate — requires cross-row comparison)
     dup_source = 1
     data.append(list(data[dup_source]))
     issues.append(PlantedIssue(row=len(data), col="employee_id", issue_type="duplicate_row",
-                               description=f"Exact duplicate of row {dup_source + 1}"))
+                               description=f"Exact duplicate of row {dup_source + 1}", difficulty=1.5))
 
-    # Issue 4: Out of range salary
+    # Issue 4: Out of range salary (easy to spot)
     r = 8
     data[r][4] = "5000"
     issues.append(PlantedIssue(row=r + 1, col="salary", issue_type="out_of_range",
-                               description="Salary 5000 is below minimum 50000"))
+                               description="Salary 5000 is below minimum 50000", difficulty=1.0))
 
     corrupted = _rows_to_csv([header] + data)
 
@@ -190,41 +191,41 @@ ORD-020,CUST-118,Fitness Tracker,Electronics,1,79.99,2024-02-03,AU,delivered,79.
     data = rows[1:]
     issues: List[PlantedIssue] = []
 
-    # Issue 1: total doesn't match quantity * unit_price
+    # Issue 1: total doesn't match quantity * unit_price (requires cross-column check)
     r = 4  # ORD-005
     data[r][9] = "84.00"  # should be 42.00 (qty=1, price=42.00)
     issues.append(PlantedIssue(row=r + 1, col="total", issue_type="inconsistent_value",
-                               description="total (84.00) != quantity (1) * unit_price (42.00)"))
+                               description="total (84.00) != quantity (1) * unit_price (42.00)", difficulty=2.0))
 
-    # Issue 2: Invalid category
+    # Issue 2: Invalid category (requires knowing the allowed set)
     r = 9  # ORD-010
     data[r][3] = "Fitness"  # should be Sports
     issues.append(PlantedIssue(row=r + 1, col="category", issue_type="format_violation",
-                               description="'Fitness' is not in allowed categories"))
+                               description="'Fitness' is not in allowed categories", difficulty=1.5))
 
-    # Issue 3: Missing value in product_name
+    # Issue 3: Missing value in product_name (easy to spot)
     r = 13  # ORD-014
     data[r][2] = ""
     issues.append(PlantedIssue(row=r + 1, col="product_name", issue_type="missing_value",
-                               description="Empty product_name"))
+                               description="Empty product_name", difficulty=1.0))
 
-    # Issue 4: Out of range quantity
+    # Issue 4: Out of range quantity (easy to spot)
     r = 16  # ORD-017
     data[r][4] = "-1"
     issues.append(PlantedIssue(row=r + 1, col="quantity", issue_type="out_of_range",
-                               description="Negative quantity"))
+                               description="Negative quantity", difficulty=1.0))
 
-    # Issue 5: Duplicate order_id
+    # Issue 5: Duplicate order_id (requires cross-row comparison)
     r = 18  # ORD-019
     data[r][0] = "ORD-003"
     issues.append(PlantedIssue(row=r + 1, col="order_id", issue_type="duplicate_row",
-                               description="Duplicate order_id ORD-003"))
+                               description="Duplicate order_id ORD-003", difficulty=1.5))
 
-    # Issue 6: Wrong date format
+    # Issue 6: Wrong date format (moderate — format mismatch)
     r = 11  # ORD-012
     data[r][6] = "26/01/2024"
     issues.append(PlantedIssue(row=r + 1, col="order_date", issue_type="format_violation",
-                               description="Date format DD/MM/YYYY instead of YYYY-MM-DD"))
+                               description="Date format DD/MM/YYYY instead of YYYY-MM-DD", difficulty=1.5))
 
     corrupted = _rows_to_csv([header] + data)
 
@@ -301,53 +302,57 @@ EXP-015,whisper-small,common-voice,520000,16000,16000,0.00005,16,5,0.55,0.68,0.0
     data = rows[1:]
     issues: List[PlantedIssue] = []
 
-    # Issue 1: Data leakage signal — val_loss much lower than train_loss
+    # Issue 1: Data leakage signal — val_loss much lower than train_loss (hard — requires ML knowledge)
     r = 4  # EXP-005
     data[r][10] = "0.15"  # val_loss=0.15 but train_loss=0.28 → suspicious
     issues.append(PlantedIssue(row=r + 1, col="val_loss", issue_type="inconsistent_value",
-                               description="val_loss (0.15) significantly less than train_loss (0.28), potential data leakage"))
+                               description="val_loss (0.15) significantly less than train_loss (0.28), potential data leakage",
+                               difficulty=3.0))
 
-    # Issue 2: Batch size not power of 2
+    # Issue 2: Batch size not power of 2 (moderate — domain convention)
     r = 8  # EXP-009
     data[r][7] = "250"  # not a power of 2
     issues.append(PlantedIssue(row=r + 1, col="batch_size", issue_type="format_violation",
-                               description="batch_size 250 is not a power of 2"))
+                               description="batch_size 250 is not a power of 2", difficulty=2.0))
 
-    # Issue 3: GPU memory unreasonable for model
+    # Issue 3: GPU memory unreasonable for model (hard — requires model size reasoning)
     r = 6  # EXP-007 resnet18 on cifar10
     data[r][12] = "42.5"  # resnet18 shouldn't need 42.5 GB
     issues.append(PlantedIssue(row=r + 1, col="gpu_memory_gb", issue_type="statistical_outlier",
-                               description="resnet18 on cifar10 using 42.5 GB GPU memory is unreasonable"))
+                               description="resnet18 on cifar10 using 42.5 GB GPU memory is unreasonable",
+                               difficulty=3.0))
 
-    # Issue 4: Timestamp out of order
+    # Issue 4: Timestamp out of order (moderate — requires sequential comparison)
     r = 10  # EXP-011
     data[r][14] = "2024-03-02T09:00:00"  # should be after EXP-010's timestamp
     issues.append(PlantedIssue(row=r + 1, col="timestamp", issue_type="inconsistent_value",
-                               description="Timestamp 2024-03-02 is before EXP-010's timestamp 2024-03-11"))
+                               description="Timestamp 2024-03-02 is before EXP-010's timestamp 2024-03-11",
+                               difficulty=2.0))
 
-    # Issue 5: Train size smaller than test size
+    # Issue 5: Train size smaller than test size (moderate — cross-column logic)
     r = 9  # EXP-010
     data[r][3] = "500"  # train_size=500 but test_size=1821
     issues.append(PlantedIssue(row=r + 1, col="train_size", issue_type="inconsistent_value",
-                               description="train_size (500) is smaller than test_size (1821)"))
+                               description="train_size (500) is smaller than test_size (1821)",
+                               difficulty=2.0))
 
-    # Issue 6: Negative training time
+    # Issue 6: Negative training time (easy to spot)
     r = 13  # EXP-014
     data[r][13] = "-72.0"
     issues.append(PlantedIssue(row=r + 1, col="training_time_hours", issue_type="out_of_range",
-                               description="Negative training time"))
+                               description="Negative training time", difficulty=1.0))
 
-    # Issue 7: Learning rate out of range
+    # Issue 7: Learning rate out of range (easy to spot)
     r = 12  # EXP-013
     data[r][6] = "2.5"  # way too high
     issues.append(PlantedIssue(row=r + 1, col="learning_rate", issue_type="out_of_range",
-                               description="Learning rate 2.5 exceeds maximum of 1.0"))
+                               description="Learning rate 2.5 exceeds maximum of 1.0", difficulty=1.5))
 
-    # Issue 8: Missing model name (subtle — single space instead of empty)
+    # Issue 8: Missing model name (hard — whitespace-only is subtle)
     r = 14  # EXP-015
     data[r][1] = " "
     issues.append(PlantedIssue(row=r + 1, col="model_name", issue_type="missing_value",
-                               description="model_name is whitespace-only"))
+                               description="model_name is whitespace-only", difficulty=2.5))
 
     corrupted = _rows_to_csv([header] + data)
 
@@ -368,6 +373,123 @@ EXP-015,whisper-small,common-voice,520000,16000,16000,0.00005,16,5,0.55,0.68,0.0
         corrupted_csv=corrupted,
         max_steps=3,
     )
+
+
+# ---------------------------------------------------------------------------
+# Contamination rules for extensible task creation
+# ---------------------------------------------------------------------------
+
+# Each contamination rule is a callable: (rows, header, col_idx, row_idx, rng) -> (new_value, PlantedIssue)
+# Users can define their own and register them.
+
+CONTAMINATION_RULES = {
+    "missing_value": lambda rows, header, col_idx, row_idx, rng: (
+        "",
+        PlantedIssue(
+            row=row_idx + 1, col=header[col_idx], issue_type="missing_value",
+            description=f"Empty {header[col_idx]} field", difficulty=1.0,
+        ),
+    ),
+    "whitespace_value": lambda rows, header, col_idx, row_idx, rng: (
+        " ",
+        PlantedIssue(
+            row=row_idx + 1, col=header[col_idx], issue_type="missing_value",
+            description=f"Whitespace-only {header[col_idx]} field", difficulty=2.5,
+        ),
+    ),
+    "wrong_type_text": lambda rows, header, col_idx, row_idx, rng: (
+        rng.choice(["not-a-number", "N/A", "null", "undefined"]),
+        PlantedIssue(
+            row=row_idx + 1, col=header[col_idx], issue_type="wrong_type",
+            description=f"{header[col_idx]} is text instead of expected type", difficulty=1.0,
+        ),
+    ),
+    "negative_value": lambda rows, header, col_idx, row_idx, rng: (
+        str(-abs(float(rows[row_idx][col_idx]) if rows[row_idx][col_idx] else 1)),
+        PlantedIssue(
+            row=row_idx + 1, col=header[col_idx], issue_type="out_of_range",
+            description=f"Negative {header[col_idx]}", difficulty=1.0,
+        ),
+    ),
+}
+
+
+def create_task_from_config(
+    task_id: str,
+    name: str,
+    description: str,
+    schema_description: str,
+    validation_rules: str,
+    clean_csv: str,
+    contaminations: List[dict],
+    max_steps: int = 3,
+    seed: int = 42,
+) -> Task:
+    """
+    Create a custom task from a configuration dict.
+
+    Each contamination entry should have:
+        - rule: str (key in CONTAMINATION_RULES) or callable
+        - row: int (0-based row index in data)
+        - col: int (column index in header)
+        - difficulty: float (optional, overrides rule default)
+
+    Example:
+        contaminations = [
+            {"rule": "missing_value", "row": 2, "col": 1, "difficulty": 1.5},
+            {"rule": "negative_value", "row": 5, "col": 4},
+        ]
+    """
+    rng = random.Random(seed)
+    rows = _csv_to_rows(clean_csv)
+    header = rows[0]
+    data = rows[1:]
+    issues: List[PlantedIssue] = []
+
+    for spec in contaminations:
+        rule = spec["rule"]
+        row_idx = spec["row"]
+        col_idx = spec["col"]
+
+        if callable(rule):
+            new_val, issue = rule(data, header, col_idx, row_idx, rng)
+        elif rule in CONTAMINATION_RULES:
+            new_val, issue = CONTAMINATION_RULES[rule](data, header, col_idx, row_idx, rng)
+        else:
+            raise ValueError(f"Unknown contamination rule: {rule}. Available: {list(CONTAMINATION_RULES.keys())}")
+
+        data[row_idx][col_idx] = new_val
+        if "difficulty" in spec:
+            issue.difficulty = spec["difficulty"]
+        issues.append(issue)
+
+    corrupted = _rows_to_csv([header] + data)
+
+    return Task(
+        task_id=task_id,
+        name=name,
+        description=description,
+        schema_description=schema_description,
+        validation_rules=validation_rules,
+        clean_csv=clean_csv,
+        planted_issues=issues,
+        corrupted_csv=corrupted,
+        max_steps=max_steps,
+    )
+
+
+def register_task(task_id: str, factory_fn):
+    """Register a custom task factory. Factory must accept (seed: int) -> Task."""
+    TASK_REGISTRY[task_id] = factory_fn
+
+
+def register_contamination_rule(name: str, rule_fn):
+    """
+    Register a custom contamination rule.
+
+    rule_fn signature: (rows, header, col_idx, row_idx, rng) -> (new_value, PlantedIssue)
+    """
+    CONTAMINATION_RULES[name] = rule_fn
 
 
 # ---------------------------------------------------------------------------

@@ -58,6 +58,61 @@ def compute_f1(reported_keys: Set[str], planted_keys: Set[str]) -> dict:
     return {"precision": precision, "recall": recall, "f1": f1, "tp": tp, "fp": fp, "fn": fn}
 
 
+def compute_weighted_reward(
+    reported_keys: Set[str],
+    planted_issues: list,
+) -> dict:
+    """
+    Compute difficulty-weighted reward for richer per-step signal.
+
+    Each planted issue has a difficulty weight (1.0-3.0). Finding harder issues
+    earns more reward. False positives incur a penalty scaled by average difficulty.
+
+    Returns dict with weighted_reward (0.0-1.0), plus per-issue breakdown.
+    """
+    if not planted_issues and not reported_keys:
+        return {"weighted_reward": 1.0, "difficulty_found": 0.0, "difficulty_missed": 0.0}
+
+    planted_by_key = {issue.to_key(): issue for issue in planted_issues}
+    planted_keys = set(planted_by_key.keys())
+
+    if not reported_keys:
+        total_weight = sum(i.difficulty for i in planted_issues)
+        return {"weighted_reward": 0.0, "difficulty_found": 0.0, "difficulty_missed": total_weight}
+
+    if not planted_keys:
+        return {"weighted_reward": 0.0, "difficulty_found": 0.0, "difficulty_missed": 0.0}
+
+    # Sum difficulty weights for found vs missed issues
+    found_keys = reported_keys & planted_keys
+    missed_keys = planted_keys - reported_keys
+    false_positive_count = len(reported_keys - planted_keys)
+
+    difficulty_found = sum(planted_by_key[k].difficulty for k in found_keys)
+    difficulty_missed = sum(planted_by_key[k].difficulty for k in missed_keys)
+    total_weight = sum(i.difficulty for i in planted_issues)
+
+    # Weighted recall: proportion of difficulty captured
+    weighted_recall = difficulty_found / total_weight if total_weight > 0 else 0.0
+
+    # Penalty for false positives (scaled by avg difficulty so penalty is proportional)
+    avg_difficulty = total_weight / len(planted_issues)
+    fp_penalty_weight = false_positive_count * avg_difficulty
+    weighted_precision = difficulty_found / (difficulty_found + fp_penalty_weight) if (difficulty_found + fp_penalty_weight) > 0 else 0.0
+
+    # Weighted F1
+    if (weighted_precision + weighted_recall) > 0:
+        weighted_reward = 2 * weighted_precision * weighted_recall / (weighted_precision + weighted_recall)
+    else:
+        weighted_reward = 0.0
+
+    return {
+        "weighted_reward": round(weighted_reward, 4),
+        "difficulty_found": round(difficulty_found, 2),
+        "difficulty_missed": round(difficulty_missed, 2),
+    }
+
+
 class DataQAEnvironment(Environment):
     """
     Data Quality Assurance environment.
@@ -138,15 +193,21 @@ class DataQAEnvironment(Environment):
             else:
                 parse_errors.append(f"Could not parse: '{raw_issue}'")
 
-        # Compute score
+        # Compute score (standard F1)
         metrics = compute_f1(reported_keys, self._planted_keys)
         score = metrics["f1"]
-        self._best_score = max(self._best_score, score)
+
+        # Compute difficulty-weighted reward (richer per-step signal)
+        weighted = compute_weighted_reward(reported_keys, self._current_task.planted_issues)
+        weighted_reward = weighted["weighted_reward"]
+
+        # Use weighted reward as the primary reward signal
+        self._best_score = max(self._best_score, weighted_reward)
         self._state.best_score = self._best_score
 
         # Check if done
         is_done = (
-            score >= 0.999  # Perfect score
+            score >= 0.999  # Perfect score (all issues found exactly)
             or self._state.current_step >= self._state.max_steps
         )
 
@@ -156,6 +217,7 @@ class DataQAEnvironment(Environment):
             f"Issues reported: {len(reported_keys)}",
             f"True positives: {metrics['tp']}, False positives: {metrics['fp']}, Missed: {metrics['fn']}",
             f"Precision: {metrics['precision']:.3f}, Recall: {metrics['recall']:.3f}, F1: {score:.3f}",
+            f"Weighted reward: {weighted_reward:.3f} (difficulty found: {weighted['difficulty_found']}, missed: {weighted['difficulty_missed']})",
         ]
 
         if parse_errors:
@@ -173,7 +235,7 @@ class DataQAEnvironment(Environment):
                 )
             feedback_lines.append("You can submit again with an updated list of issues.")
         else:
-            feedback_lines.append(f"Task complete! Final best F1 score: {self._best_score:.3f}")
+            feedback_lines.append(f"Task complete! Final best weighted reward: {self._best_score:.3f}")
 
         return DataQAObservation(
             dataset_csv=self._current_task.corrupted_csv,
@@ -186,6 +248,17 @@ class DataQAEnvironment(Environment):
             max_steps=self._state.max_steps,
             done=is_done,
             reward=self._best_score,
+            metadata={
+                "f1": score,
+                "weighted_reward": weighted_reward,
+                "precision": metrics["precision"],
+                "recall": metrics["recall"],
+                "tp": metrics["tp"],
+                "fp": metrics["fp"],
+                "fn": metrics["fn"],
+                "difficulty_found": weighted["difficulty_found"],
+                "difficulty_missed": weighted["difficulty_missed"],
+            },
         )
 
     @property
