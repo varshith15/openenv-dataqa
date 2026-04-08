@@ -162,6 +162,44 @@ AGENT_TRAJECTORIES = {
             ],
         },
     ],
+    "moderation": [
+        {
+            "issues": [
+                "row:16,col:hate,issue:inconsistent_value",
+                "row:17,col:harassment,issue:inconsistent_value",
+                "row:20,col:violence,issue:inconsistent_value",
+                "row:11,col:hate,issue:out_of_range",
+                "row:15,col:text,issue:missing_value",
+                "row:29,col:text,issue:duplicate_row",
+            ],
+            "fixes": [],
+        },
+        {
+            "issues": [
+                "row:5,col:hate,issue:inconsistent_value",
+                "row:11,col:hate,issue:out_of_range",
+                "row:15,col:text,issue:missing_value",
+                "row:16,col:hate,issue:inconsistent_value",
+                "row:17,col:harassment,issue:inconsistent_value",
+                "row:20,col:violence,issue:inconsistent_value",
+                "row:22,col:self_harm,issue:inconsistent_value",
+                "row:24,col:hate,issue:inconsistent_value",
+                "row:26,col:harassment,issue:inconsistent_value",
+                "row:29,col:text,issue:duplicate_row",
+            ],
+            "fixes": [
+                # All deterministic label flips:
+                "row:16,col:hate,fix:1",           # unflagged hate → flag it
+                "row:17,col:harassment,fix:1",      # unflagged harassment → flag it
+                "row:20,col:violence,fix:1",        # unflagged violence → flag it
+                "row:22,col:self_harm,fix:1",       # unflagged self-harm → flag it
+                "row:5,col:hate,fix:0",             # false positive on idiom → unflag
+                "row:24,col:hate,fix:1",            # subset rule: hate_threatening needs hate
+                "row:26,col:harassment,fix:0",      # false positive on moral judgment → unflag
+                "row:11,col:hate,fix:0",            # out of range 2 → 0
+            ],
+        },
+    ],
 }
 
 
