@@ -570,21 +570,24 @@ def create_task_alignment(seed: int = 42) -> Task:
     data = rows[1:]
     issues: List[PlantedIssue] = []
 
-    # Issue 1: Response doesn't match prompt (prompt-response mismatch)
-    # Row 6 asks about cherry blossoms — replace with cooking instructions
+    # Issue 1: Subtle factual error — ALMOST correct but wrong on a key detail
+    # Row 6 about cherry blossoms — wrong scientific name (close but wrong genus)
     r = 5  # id=6
-    data[r][2] = "To make pasta start by boiling water in a large pot. Add salt generously. Cook for 8-10 minutes until al dente. Drain and serve with your favorite sauce."
+    data[r][2] = "The scientific name for the flower commonly called a cherry blossom is Cerasus serrulata. It can be found in white pink and red colors."
+    # Real name is Prunus serrulata, not Cerasus. Cerasus is an old synonym sometimes used
+    # but taxonomically incorrect. Subtle enough that most LLMs won't catch it.
     issues.append(PlantedIssue(row=r + 1, col="response", issue_type="inconsistent_value",
-                               description="Response is about cooking pasta but prompt asks about cherry blossom scientific names — prompt-response mismatch",
-                               difficulty=2.0))
+                               description="Scientific name Cerasus serrulata is taxonomically incorrect — accepted name is Prunus serrulata. Subtle factual error with correctness=3",
+                               difficulty=3.0))
 
-    # Issue 2: Factual error with correctness=4 (high score contradicts wrong content)
-    # Row 4 about most expensive painting — inject wrong fact
+    # Issue 2: Plausible but wrong numbers — close enough to seem right
+    # Row 4 about most expensive painting — right painting, wrong price and venue
     r = 3  # id=4
-    data[r][2] = "The most expensive painting ever sold at auction is the Mona Lisa by Picasso. It was sold for $50 million at Sotheby's in London in 2020."
+    data[r][2] = "The most expensive painting ever sold at auction is Salvator Mundi by Leonardo da Vinci. It was sold for $400.3 million at Sotheby's in New York City in 2017."
+    # Actual: $450.3M at Christie's (not Sotheby's, not $400.3M)
     issues.append(PlantedIssue(row=r + 1, col="response", issue_type="inconsistent_value",
-                               description="Response claims Mona Lisa by Picasso sold for $50M (wrong: Salvator Mundi by da Vinci for $450M) but correctness score is 4",
-                               difficulty=2.5))
+                               description="Response has wrong auction house (Sotheby's vs Christie's) and wrong price ($400.3M vs $450.3M) but correctness score is 4 — subtle factual errors",
+                               difficulty=3.0))
 
     # Issue 3: Sycophantic/self-contradictory response with high coherence score
     # Row 11 about morbidity vs mortality
@@ -608,12 +611,12 @@ def create_task_alignment(seed: int = 42) -> Task:
                                description="Response is in French but prompt is in English — language contamination in training data",
                                difficulty=2.0))
 
-    # Issue 6: Duplicate prompt (deduplication failure — same question appears twice)
-    r = 6  # id=7 (centurion duties — row 7 and 8 in original data are about same topic)
-    data[r][1] = data[0][1]  # copy prompt from row 1 (gelatin)
+    # Issue 6: Near-duplicate prompt — rephrased but semantically identical to another row
+    r = 6  # id=7 (centurion duties)
+    data[r][1] = "What is gelatin and how is it produced?"  # semantic duplicate of row 1 "What is gelatin made of and how is it made?"
     issues.append(PlantedIssue(row=r + 1, col="prompt", issue_type="duplicate_row",
-                               description="Prompt is identical to row 1 — duplicate training example wastes compute and biases model",
-                               difficulty=1.5))
+                               description="Prompt 'What is gelatin and how is it produced?' is a semantic duplicate of row 1 'What is gelatin made of and how is it made?' — wastes training compute and biases model",
+                               difficulty=2.5))
 
     # Issue 7: Response plagiarizes another row (data shuffling error)
     r = 19  # id=20, grassland animals
@@ -636,14 +639,16 @@ def create_task_alignment(seed: int = 42) -> Task:
                                description="Response suggests dangerous methods (boiling water on ice sharp knife near coils) but helpfulness score is 3 — harmful advice in training data",
                                difficulty=3.0))
 
-    # Issue 10: Correctness score inflated for wrong answer
-    # Row 17 about most destructive natural disaster
+    # Issue 10: Helpfulness score contradicts response quality
+    # Row 17 about most destructive disaster — response is extremely terse for a complex question
     r = 16  # id=17
-    data[r][3] = "4"  # correctness=4 but...
-    data[r][2] = "The most destructive natural disaster in human history was the 2004 Indian Ocean earthquake and tsunami which killed approximately 50000 people."
-    # Actually Krakatoa 1883 or 1556 Shaanxi earthquake killed 830K+. And 2004 killed 227K not 50K.
-    issues.append(PlantedIssue(row=r + 1, col="correctness", issue_type="inconsistent_value",
-                               description="Correctness score is 4 but response has wrong death toll (50K vs actual 227K for 2004 tsunami) and debatable claim about most destructive — score-content mismatch",
+    data[r][3] = "4"  # helpfulness=4 but response is just 2 sentences for a nuanced historical question
+    data[r][4] = "4"  # correctness=4 but the answer itself is debatable
+    data[r][2] = "The 1556 Shaanxi earthquake."
+    # This is arguably correct but gives no context, no detail — helpfulness=4 and correctness=4
+    # for a 4-word answer to "most destructive natural disaster" is clearly inflated
+    issues.append(PlantedIssue(row=r + 1, col="helpfulness", issue_type="inconsistent_value",
+                               description="Helpfulness score is 4 but response is only 4 words ('The 1556 Shaanxi earthquake.') with no explanation — score inflated for an unhelpful response",
                                difficulty=2.5))
 
     # Issue 11: Whitespace-only prompt (data pipeline artifact)
