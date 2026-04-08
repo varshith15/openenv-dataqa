@@ -168,16 +168,16 @@ AGENT_TRAJECTORIES = {
                 "row:16,col:hate,issue:inconsistent_value",
                 "row:17,col:harassment,issue:inconsistent_value",
                 "row:20,col:violence,issue:inconsistent_value",
-                "row:11,col:hate,issue:out_of_range",
+                "row:13,col:violence,issue:out_of_range",
                 "row:15,col:text,issue:missing_value",
-                "row:29,col:text,issue:duplicate_row",
+                "row:30,col:text,issue:duplicate_row",
             ],
             "fixes": [],
         },
         {
             "issues": [
                 "row:5,col:hate,issue:inconsistent_value",
-                "row:11,col:hate,issue:out_of_range",
+                "row:13,col:violence,issue:out_of_range",
                 "row:15,col:text,issue:missing_value",
                 "row:16,col:hate,issue:inconsistent_value",
                 "row:17,col:harassment,issue:inconsistent_value",
@@ -185,7 +185,7 @@ AGENT_TRAJECTORIES = {
                 "row:22,col:self_harm,issue:inconsistent_value",
                 "row:24,col:hate,issue:inconsistent_value",
                 "row:26,col:harassment,issue:inconsistent_value",
-                "row:29,col:text,issue:duplicate_row",
+                "row:30,col:text,issue:duplicate_row",
             ],
             "fixes": [
                 # All deterministic label flips:
@@ -196,7 +196,7 @@ AGENT_TRAJECTORIES = {
                 "row:5,col:hate,fix:0",             # false positive on idiom → unflag
                 "row:24,col:hate,fix:1",            # subset rule: hate_threatening needs hate
                 "row:26,col:harassment,fix:0",      # false positive on moral judgment → unflag
-                "row:11,col:hate,fix:0",            # out of range 2 → 0
+                "row:13,col:violence,fix:0",         # out of range 3 → 0
             ],
         },
     ],

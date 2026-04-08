@@ -929,10 +929,10 @@ def create_task_moderation(seed: int = 42) -> Task:
                                difficulty=1.5))
 
     # Issue 7: Label value out of range (deterministic: must be 0 or 1)
-    r = 10  # row 11
-    data[r][3] = "2"  # hate=2 — invalid, must be 0 or 1
-    issues.append(PlantedIssue(row=r + 1, col="hate", issue_type="out_of_range",
-                               description="hate label is 2 but must be 0 or 1 — should be 0 (text is about immigration policy not hate speech)",
+    r = 12  # row 13, neutral text
+    data[r][4] = "3"  # violence=3 — invalid, must be 0 or 1
+    issues.append(PlantedIssue(row=r + 1, col="violence", issue_type="out_of_range",
+                               description="violence label is 3 but must be 0 or 1 — should be 0 (text is about adjusting strategy not violence)",
                                difficulty=1.0))
 
     # Issue 8: Empty text field (data pipeline artifact)
@@ -943,16 +943,15 @@ def create_task_moderation(seed: int = 42) -> Task:
                                difficulty=1.5))
 
     # Issue 9: Duplicate text (dedup failure)
-    r = 28  # row 29, copy text from row 4
-    data[r][1] = data[3][1]  # copy from row 4
+    r = 29  # row 30, copy text from row 4
+    data[r][1] = data[3][1]  # copy from row 4 ("respectful of other people")
     issues.append(PlantedIssue(row=r + 1, col="text", issue_type="duplicate_row",
                                description="Text is identical to row 4 — duplicate moderation example",
                                difficulty=1.5))
 
-    # Issue 10: Restaurant review falsely flagged as harassment
-    r = 28  # already changed text above, use different row
-    r = 25  # row 26, "ashamed of themselves" — strong language but not harassment
-    data[r][5] = "1"  # harassment=1 but it's moral judgment, not harassment
+    # Issue 10: Moral judgment falsely flagged as harassment
+    r = 25  # row 26, "ashamed of themselves" — strong but not harassment
+    data[r][5] = "1"  # harassment=1 but it's moral judgment
     issues.append(PlantedIssue(row=r + 1, col="harassment", issue_type="inconsistent_value",
                                description="Text expresses moral judgment ('should be ashamed') but is not harassment — harassment should be 0",
                                difficulty=2.5))
