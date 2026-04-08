@@ -432,11 +432,11 @@ EXP-030,llama2-13b,oasst1,84437,4401,4401,0.00001,2,3,0.78,0.88,0.0,52.0,12.0,20
                                description="Negative training time -72.0 — likely sign typo (should be 72.0)",
                                difficulty=1.0))
 
-    # Issue 7: Learning rate in wrong notation (deterministic: "2.5e1" intended as "2.5e-5" → "0.000025")
+    # Issue 7: Learning rate out of range (identify-only — any valid LR would work)
     r = 12  # EXP-013
-    data[r][6] = "2.5"  # clearly missing the "e-5" part
+    data[r][6] = "2.5"  # exceeds max 1.0
     issues.append(PlantedIssue(row=r + 1, col="learning_rate", issue_type="out_of_range",
-                               description="Learning rate 2.5 exceeds maximum 1.0 — likely truncated scientific notation (e.g. 2.5e-5 → 0.000025)",
+                               description="Learning rate 2.5 exceeds maximum of 1.0",
                                difficulty=1.5))
 
     # Issue 8: Model name misspelling (deterministic: "whsiper-small" → "whisper-small")

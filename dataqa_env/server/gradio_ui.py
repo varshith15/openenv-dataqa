@@ -113,11 +113,11 @@ AGENT_TRAJECTORIES = {
                 "row:12,col:test_accuracy,issue:statistical_outlier",
             ],
             "fixes": [
-                # All deterministic:
+                # Only deterministic fixes:
                 "row:9,col:batch_size,fix:256",                 # 250 → nearest power of 2
                 "row:14,col:training_time_hours,fix:72.0",      # -72.0 → remove negative sign
                 "row:15,col:model_name,fix:whisper-small",      # "whsiper-small" → fix spelling
-                "row:13,col:learning_rate,fix:0.000025",        # 2.5 → likely 2.5e-5
+                # NOT proposed: row:13 LR (2.5 is out of range but any valid LR works)
             ],
         },
     ],
