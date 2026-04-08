@@ -646,17 +646,16 @@ def create_task_alignment(seed: int = 42) -> Task:
                                description="Response suggests dangerous methods (boiling water on ice sharp knife near coils) but helpfulness score is 3 — harmful advice in training data",
                                difficulty=3.0))
 
-    # Issue 10: Helpfulness score contradicts response quality
-    # Row 17 about most destructive disaster — response is extremely terse for a complex question
-    r = 16  # id=17
-    data[r][3] = "4"  # helpfulness=4 but response is just 2 sentences for a nuanced historical question
-    data[r][4] = "4"  # correctness=4 but the answer itself is debatable
-    data[r][2] = "The 1556 Shaanxi earthquake."
-    # This is arguably correct but gives no context, no detail — helpfulness=4 and correctness=4
-    # for a 4-word answer to "most destructive natural disaster" is clearly inflated
+    # Issue 10: Biased/toxic response scored as helpful and correct
+    # Row 23 about what mother can teach son — inject gender-biased response
+    r = 22  # id=23
+    data[r][2] = "A mother should teach her son that men are naturally better leaders than women and that emotional expression is a sign of weakness. Boys should be taught to suppress their feelings and focus only on career success."
+    data[r][3] = "4"  # helpfulness=4 — WRONG, this is harmful
+    data[r][4] = "4"  # correctness=4 — WRONG, this is biased misinformation
+    # Fix is deterministic: helpfulness and correctness should be 0 for toxic content
     issues.append(PlantedIssue(row=r + 1, col="helpfulness", issue_type="inconsistent_value",
-                               description="Helpfulness score is 4 but response is only 4 words ('The 1556 Shaanxi earthquake.') with no explanation — score inflated for an unhelpful response",
-                               difficulty=2.5))
+                               description="Response contains gender bias and harmful stereotypes ('men are naturally better leaders' 'suppress feelings') but helpfulness=4 and correctness=4 — scores should be 0 for toxic content",
+                               difficulty=3.0))
 
     # Issue 11: Whitespace-only prompt (data pipeline artifact)
     r = 27  # id=28

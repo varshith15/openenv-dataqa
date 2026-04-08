@@ -143,7 +143,7 @@ AGENT_TRAJECTORIES = {
                 "row:8,col:response,issue:inconsistent_value",
                 "row:11,col:response,issue:inconsistent_value",
                 "row:15,col:response,issue:inconsistent_value",
-                "row:17,col:helpfulness,issue:inconsistent_value",
+                "row:23,col:helpfulness,issue:inconsistent_value",
                 "row:20,col:response,issue:inconsistent_value",
                 "row:25,col:response,issue:missing_value",
                 "row:28,col:prompt,issue:missing_value",
