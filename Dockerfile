@@ -12,7 +12,7 @@ RUN curl -LsSf https://astral.sh/uv/install.sh | sh && \
     mv /root/.local/bin/uv /usr/local/bin/uv && \
     mv /root/.local/bin/uvx /usr/local/bin/uvx
 
-# Copy project files
+# Copy project files (v2 - with coding+toolcalling tasks)
 COPY pyproject.toml /app/
 COPY openenv.yaml /app/
 COPY dataqa_env/ /app/dataqa_env/
