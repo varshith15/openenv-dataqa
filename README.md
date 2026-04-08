@@ -222,7 +222,7 @@ register_task("custom", lambda seed: task)
 | `wrong_type_text` | Replaces with random text | 1.0 |
 | `negative_value` | Negates numeric value | 1.0 |
 
-## Quick Start
+## Setup & Quick Start
 
 ```bash
 # Install
