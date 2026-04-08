@@ -6,4 +6,8 @@ build/
 .venv/
 *.egg
 .env
+.claude/
+.pytest_cache/
 uv.lock
+*.mov
+docs/*.png
