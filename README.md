@@ -17,17 +17,27 @@ A two-phase OpenEnv RL environment for **Data Quality Assurance** — an LLM age
 
 ### Demo: Agent Trajectory Replay
 
-**Easy task** — Agent finds all 4 issues and proposes fixes (step 2):
+```
+EASY TASK (Step 2) — All 6 issues found + 5 fixes proposed
+  Reward: 0.87 | Identify: 1.00 | Fix: 0.67
+  ✓ row:4  name: empty → "David Kim"          (fix correct)
+  ✓ row:7  salary: "seventy-five thousand" → "75000"  (fix correct)
+  ✓ row:9  salary: "5000" → "73000"           (fix correct)
+  ✓ row:15 email: mismatch → "oscar.rivera@company.com" (fix correct)
+  ✓ row:18 start_date: "2027-06-15" → "2022-01-19"     (fix correct)
+  ✓ row:21 duplicate row detected
 
-![Easy task: all issues found + fixes proposed](docs/demo_easy.png)
+HARD TASK (Step 1 → Step 2)
+  Step 1: Found 5/10, missed hard issues    → Reward: 0.69
+  Step 2: Found 10/10 + 5 fixes proposed   → Reward: 0.77
+  Issues requiring ML knowledge:
+    • val_loss < train_loss (data leakage signal)
+    • resnet18 using 42.5GB GPU (impossible)
+    • 350 epochs on ImageNet in 30 min (impossible)
+    • wav2vec2 at 98.5% accuracy (exceeds SOTA)
+```
 
-**Hard task** — Agent identifies 8 subtle ML issues including data leakage and GPU memory outlier, proposes fixes (step 2):
-
-![Hard task: ML experiment metadata with 8 issues](docs/demo_hard.png)
-
-Green cells = correctly found issues. Yellow = missed. Green outlines = correct fixes with proposed values shown inline (e.g. `empty → David Kim`, `seventy-five thousand → 75000`).
-
-> The interactive replay UI is available at the `/web` endpoint on the HF Space.
+> The interactive replay UI with color-coded dataset visualization is available on the HF Space.
 
 ## Motivation
 
