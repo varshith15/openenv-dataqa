@@ -145,9 +145,9 @@ AGENT_TRAJECTORIES = {
                 "row:3,col:response,issue:inconsistent_value",
             ],
             "fixes": [
-                "row:6,col:response,fix:Buenos dias. In Spanish this is a common greeting used in the morning.",
-                "row:10,col:response,fix:The capital of Japan is Tokyo.",
-                "row:19,col:response,fix:The water cycle describes continuous movement of water on Earth.",
+                "row:6,col:response,fix:The scientific name for the flower commonly called a cherry blossom is Prunus serrulata. It can be found in white pink and red colors.",
+                "row:4,col:response,fix:The most expensive painting ever sold at auction is Salvator Mundi by Leonardo da Vinci. It was sold for $450.3 million at Christie's in New York City in 2017.",
+                "row:20,col:response,fix:Five animals that live in grasslands are lions zebras cheetahs gazelles and hyenas. These animals live in grasslands to access the food water and shade that grasslands provide.",
             ],
         },
     ],
