@@ -40,7 +40,7 @@ AGENT_TRAJECTORIES = {
                 "row:7,col:salary,issue:wrong_type",
                 "row:11,col:department,issue:format_violation",
                 "row:15,col:email,issue:inconsistent_value",
-                "row:18,col:salary,issue:out_of_range",
+                "row:12,col:start_date,issue:format_violation",
                 "row:21,col:employee_id,issue:duplicate_row",
             ],
             "fixes": [
@@ -49,7 +49,7 @@ AGENT_TRAJECTORIES = {
                 "row:7,col:salary,fix:75000",                       # "seventy-five thousand" → 75000
                 "row:11,col:department,fix:Engineering",             # "Engneering" → "Engineering"
                 "row:15,col:email,fix:oscar.rivera@company.com",    # from name Oscar Rivera
-                "row:18,col:salary,fix:99000",                      # 990000 → remove extra digit
+                "row:12,col:start_date,fix:2022-11-03",              # MM-DD-YYYY → YYYY-MM-DD
             ],
         },
     ],

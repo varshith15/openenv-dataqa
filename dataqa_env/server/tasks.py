@@ -158,11 +158,11 @@ def create_task_easy(seed: int = 42) -> Task:
                                description="Email john.doe@company.com doesn't match name Oscar Rivera",
                                difficulty=1.5))
 
-    # Issue 6: Salary with extra digit — typo (deterministic fix: "950000" → "95000")
-    r = 17  # Rosa Diaz, original salary is 99000
-    data[r][4] = "990000"  # extra zero
-    issues.append(PlantedIssue(row=r + 1, col="salary", issue_type="out_of_range",
-                               description="Salary 990000 exceeds maximum 150000 — likely extra digit typo (should be 99000)",
+    # Issue 6: Date in wrong format (deterministic fix: "03-15-2022" → "2022-03-15")
+    r = 11  # Laura Adams, start_date should be 2022-11-03
+    data[r][5] = "11-03-2022"  # MM-DD-YYYY instead of YYYY-MM-DD
+    issues.append(PlantedIssue(row=r + 1, col="start_date", issue_type="format_violation",
+                               description="Start date '11-03-2022' is in MM-DD-YYYY format instead of required YYYY-MM-DD (should be 2022-11-03)",
                                difficulty=1.5))
 
     corrupted = _rows_to_csv([header] + data)

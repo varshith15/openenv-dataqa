@@ -233,7 +233,7 @@ class TestGradeFixes:
             (7, "salary", "75000"),           # type conversion
             (11, "department", "Engineering"), # spelling fix
             (15, "email", "oscar.rivera@company.com"),  # pattern match
-            (18, "salary", "99000"),          # remove extra digit
+            (12, "start_date", "2022-11-03"),  # date format fix
         ]
         result = grade_fixes(fixes, easy_task)
         assert result["fix_score"] > 0.7
