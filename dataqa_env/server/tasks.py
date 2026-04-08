@@ -491,41 +491,50 @@ EXP-030,llama2-13b,oasst1,84437,4401,4401,0.00001,2,3,0.78,0.88,0.0,52.0,12.0,20
 # ---------------------------------------------------------------------------
 
 def _build_alignment_csv() -> str:
-    """Build alignment task CSV from real Stanford Alpaca instruction-tuning data."""
-    # Real instruction-response pairs from tatsu-lab/alpaca (Stanford Alpaca dataset)
-    # Selected for diversity: coding, science, creative, business, geography, health
-    ALPACA_SAMPLES = [
-        ("Explain the difference between a list and a tuple in Python", "A list is mutable and can be changed after creation while a tuple is immutable. Lists use square brackets and tuples use parentheses. Use tuples for fixed collections and lists when you need to modify elements.", "coding"),
-        ("What is photosynthesis?", "Photosynthesis is the process by which green plants convert sunlight into chemical energy. Plants absorb CO2 and water then use light energy to produce glucose and oxygen. The equation is 6CO2 + 6H2O + light energy -> C6H12O6 + 6O2.", "science"),
-        ("Give three tips for staying healthy", "1. Eat a balanced diet with plenty of fruits and vegetables. 2. Exercise regularly to keep your body active and strong. 3. Get enough sleep and maintain a consistent sleep schedule.", "health"),
-        ("How do I make an HTTP request in JavaScript?", "Use the fetch API: fetch(url).then(response => response.json()).then(data => console.log(data)). Alternatively use XMLHttpRequest or libraries like axios for more features.", "coding"),
-        ("Name three chemical elements from Period 3", "Three chemical elements from Period 3 are Sodium (Na) Magnesium (Mg) and Aluminum (Al).", "science"),
-        ("Translate 'Good morning' to Spanish", "Buenos dias. In Spanish this is a common greeting used in the morning typically before noon. The literal translation is 'good days' (plural).", "translation"),
-        ("What is the time complexity of binary search?", "Binary search has O(log n) time complexity. It works by repeatedly dividing the search interval in half. It requires a sorted input array. Space complexity is O(1) iterative or O(log n) recursive.", "coding"),
-        ("Summarize the theory of relativity", "Einstein's theory consists of special relativity (1905) and general relativity (1915). Special relativity states the speed of light is constant and introduces E=mc2. General relativity describes gravity as spacetime curvature caused by mass.", "science"),
-        ("Describe how quantum computers work", "Quantum computers use qubits instead of traditional bits. Qubits can exist in superposition of 0 and 1 simultaneously allowing parallel processing. Quantum algorithms enable solving certain problems exponentially faster than classical computers.", "science"),
-        ("What is the capital of Japan?", "The capital of Japan is Tokyo. It has been the capital since 1868 when Emperor Meiji moved the imperial seat from Kyoto. Tokyo is the most populous metropolitan area in the world with over 37 million people.", "geography"),
-        ("How does a neural network learn?", "A neural network learns through backpropagation and gradient descent. Input data flows through layers of neurons in a forward pass. The loss function measures error and backpropagation computes gradients to update weights over many iterations.", "coding"),
-        ("What are the benefits of meditation?", "Meditation reduces stress and anxiety improves focus enhances emotional well-being promotes better sleep and can lower blood pressure. Regular practice of even 10 minutes daily produces measurable benefits in brain structure and function.", "health"),
-        ("Explain blockchain in simple terms", "Blockchain is a shared digital ledger recording transactions across many computers. Once recorded data cannot be altered without changing all subsequent blocks. This makes it secure and transparent. Bitcoin was the first major blockchain application.", "technology"),
-        ("Generate a recipe that is easy to make and good for health", "A healthy easy recipe is Quinoa Salad with Avocado Corn and Lime. It requires only 6 ingredients and takes less than 30 minutes. Loaded with nutritious ingredients it is great for a light lunch or dinner.", "health"),
-        ("Write a short product description for wireless earbuds", "Experience crystal-clear audio with our premium wireless earbuds. Featuring active noise cancellation 8-hour battery life and IPX5 water resistance. Seamless Bluetooth 5.3 connectivity with touch controls.", "business"),
-        ("What causes climate change?", "Climate change is primarily caused by greenhouse gas emissions from burning fossil fuels deforestation and industrial processes. CO2 methane and nitrous oxide trap heat in the atmosphere. Human activities increased CO2 levels by over 50% since pre-industrial times.", "science"),
-        ("How do I center a div in CSS?", "Use flexbox: display flex; justify-content center; align-items center. Alternatively use CSS Grid: display grid; place-items center. For older browsers use position absolute with transform translate(-50% -50%).", "coding"),
-        ("What is cognitive behavioral therapy?", "CBT is psychotherapy that helps identify and change negative thought patterns. It focuses on connections between thoughts feelings and behaviors. CBT is evidence-based for depression anxiety PTSD and other conditions. Treatment typically lasts 12-20 sessions.", "health"),
-        ("Explain the water cycle", "The water cycle describes continuous movement of water on Earth. Water evaporates from oceans rises as vapor condenses into clouds and falls as precipitation. It then flows through rivers into oceans or seeps into groundwater completing the cycle.", "science"),
-        ("List 3 reasons why data visualization is important", "Data visualization is important for gaining insights from complex data for communicating information effectively and for presenting information in an easily understandable way. It helps uncover patterns trends and exceptions useful for decision making.", "science"),
-        ("What are the SOLID principles?", "SOLID: Single Responsibility (one reason to change) Open/Closed (open for extension closed for modification) Liskov Substitution (subtypes substitutable) Interface Segregation (specific over general) Dependency Inversion (depend on abstractions).", "coding"),
-        ("Describe the process of making sourdough bread", "Mix flour and water for a starter feed daily for 5-7 days. Combine starter with flour water and salt. Stretch and fold every 30 min for 2 hours. Bulk ferment 4-6 hours. Shape cold proof overnight. Bake at 450F for 45 min.", "cooking"),
-        ("What is quantum computing?", "Quantum computing uses qubits that exist in superposition of 0 and 1 simultaneously. This enables parallel processing of many states at once. Quantum entanglement and interference allow solving certain problems exponentially faster than classical computers.", "technology"),
-        ("How do I handle errors in Python?", "Use try/except blocks for error handling. Catch specific exceptions like ValueError or TypeError. Use finally for cleanup code. Create custom exceptions by subclassing Exception. Avoid bare except clauses.", "coding"),
-        ("What is the GDP of the United States?", "As of 2024 the US GDP is approximately $28.8 trillion making it the world's largest economy. The US accounts for about 26% of global GDP. Major sectors include services (80%) industry (19%) and agriculture (1%).", "geography"),
+    """Build alignment task CSV from real NVIDIA HelpSteer dataset.
+
+    Uses real prompt-response pairs with human-rated quality scores
+    from nvidia/HelpSteer (37K samples, human-annotated).
+    Scores: helpfulness, correctness, coherence, complexity, verbosity (0-4 each).
+    """
+    # Real prompt-response pairs from nvidia/HelpSteer dataset
+    # Selected: diverse topics, high quality (helpfulness>=3, correctness>=3), moderate length
+    HELPSTEER_SAMPLES = [
+        ("What is gelatin made of and how is it made?", "Gelatin is made from animal bones and skin specifically from cows and pigs. It is made by boiling these bones and skin in water to extract the collagen protein which is then dried into a powder. Gelatin is used in many foods and products for its gelling stabilizing and emulsifying properties.", 3, 3, 4, 2, 1),
+        ("What are the ingredients of a cappuccino and how does it differ from other coffee drinks?", "The ingredients in a cappuccino include espresso steamed milk and milk foam. It has a strong coffee flavor with a creamy texture. A cappuccino is different from a latte or mocha because it has less milk and more foam resulting in a stronger coffee flavor.", 3, 3, 3, 1, 1),
+        ("What is the difference between kitsch and camp?", "Kitsch is art or design that is overly sentimental or ornate while camp is a style that is over-the-top and exaggerated often used in satire or irony. Kitsch can be seen as more superficial while camp is more playful and tongue-in-cheek.", 3, 3, 3, 1, 1),
+        ("What is the most expensive painting ever sold at auction?", "The most expensive painting ever sold at auction is Salvator Mundi by Leonardo da Vinci. It was sold for $450.3 million at Christie's in New York City in 2017.", 4, 4, 4, 1, 1),
+        ("What is the average temperature of Venus?", "The average temperature of the planet Venus is 462 degrees Celsius which is equivalent to 864 degrees Fahrenheit.", 3, 3, 3, 1, 1),
+        ("What is the scientific name for cherry blossom and what colors can it be?", "The scientific name for the flower commonly called a cherry blossom is Prunus serrulata. It can be found in white pink and red colors.", 3, 3, 4, 2, 1),
+        ("What are the three main duties of a centurion in ancient Rome?", "The centurion was responsible for the military unit in the legion. They were responsible for safety and loyalty to Rome. The centurion was also responsible for leading the unit into battle and training new soldiers.", 3, 3, 3, 2, 1),
+        ("What is the best way to defrost a refrigerator?", "There are a few ways to defrost a refrigerator. You can unplug the fridge take out all contents and leave the door open. Another way is to use a blow dryer to melt the ice. Make sure to use a cloth to soak up the water as it melts.", 3, 3, 3, 1, 1),
+        ("What are common reasons for Nobel Prize nominations?", "A nomination for a Nobel Prize is typically given to individuals who have made exceptional contributions in their respective fields. The most common reasons include groundbreaking research innovative ideas and significant contributions to society.", 3, 3, 3, 2, 2),
+        ("What is a culvert and how is it constructed?", "A culvert is a pipe or other structure that allows water to flow under a road railroad or other obstacle. They are typically made of concrete metal or plastic and are installed during road construction. Culverts can handle a wide range of water flows.", 3, 3, 3, 1, 1),
+        ("What is the difference between morbidity and mortality rates?", "Morbidity refers to the rate of occurrence of illnesses or injuries within a given population while mortality refers to the rate of death. Morbidity is considered a better measure of population health as it accounts for both disease incidence and illness burden.", 4, 4, 4, 2, 3),
+        ("What are the symptoms of menopause and how can they be managed?", "Common symptoms of menopause include hot flashes night sweats mood swings vaginal dryness and loss of libido. These can be managed through lifestyle changes such as exercise yoga and meditation as well as hormonal and non-hormonal therapy options.", 3, 3, 3, 2, 1),
+        ("What are the 12 constellations of the zodiac?", "The 12 constellations of the zodiac in order are: Aries Taurus Gemini Cancer Leo Virgo Libra Scorpio Sagittarius Capricorn Aquarius Pisces.", 3, 3, 4, 1, 1),
+        ("What is parole and how does it differ from other supervised release?", "Parole is a type of supervised release granted to eligible inmates who have served part of their sentence. Unlike other types parole allows inmates to live in the community while being monitored by a parole officer with regular check-ins and drug testing.", 4, 3, 4, 2, 2),
+        ("What is the function of a fibroblast?", "Fibroblasts are cells that produce collagen a protein essential for skin structure and function. Fibroblasts are also involved in wound healing and can produce other types of proteins needed by the body.", 3, 3, 4, 1, 1),
+        ("When was the first flight of the Wright Flyer?", "The Wright brothers made four brief flights on December 17 1903. The Flyer had a length of 40 feet and a wingspan of 40 feet 6 inches.", 4, 4, 4, 3, 4),
+        ("What was the most destructive natural disaster in human history?", "The most destructive natural disaster in human history was the 1883 eruption of Krakatoa in Indonesia. The eruption caused a volcanic winter effect that reduced global temperatures and caused worldwide climate changes.", 3, 4, 3, 1, 1),
+        ("What is the difference between a dramaturge and a scriptwriter?", "The dramaturge researches the background of a play and helps the playwright create a realistic and interesting story. The scriptwriter writes the actual script for the play.", 3, 4, 4, 1, 0),
+        ("What is the omega-3 content in salmon and what are the health benefits?", "A portion of salmon typically contains around 2.5 grams of omega-3 fatty acids including EPA and DHA. Omega-3s have been linked to reducing heart disease risk improving brain function and reducing inflammation.", 4, 3, 3, 2, 1),
+        ("What animals live in grasslands and how does the environment benefit them?", "Five animals that live in grasslands are lions zebras cheetahs gazelles and hyenas. These animals live in grasslands to access the food water and shade that grasslands provide.", 3, 3, 4, 1, 2),
+        ("What is the nutritional value of squash?", "Squash is a good source of vitamins A and C as well as fiber and potassium. Yellow squash and zucchini are often considered the healthiest types due to their high levels of antioxidants and nutrients.", 3, 3, 3, 2, 2),
+        ("What is a gobbler and where is it found?", "A gobbler is a type of turkey native to North America. Its scientific name is Meleagris gallopavo. Gobblers are found in open areas such as prairies savannas and oak openings and feed primarily on grasses grains seeds and insects.", 4, 3, 4, 1, 2),
+        ("What is the most important thing a mother can teach her son?", "One of the most important things a mother can teach her son is to be a respectful loving and responsible person. It is also important to teach a strong sense of morality and to respect the feelings and opinions of others.", 3, 3, 3, 1, 2),
+        ("What are some of the oldest cotton mills in the world?", "Some of the oldest cotton mills in the world are located in India China and Egypt. These mills are often several centuries old and have been in operation for multiple generations.", 3, 3, 3, 1, 1),
+        ("What are challenges faced by immigrants to the US?", "Immigrants to the US face challenges including language barriers cultural differences discrimination lack of social support and difficulty finding employment. They may also face legal challenges such as obtaining a visa or green card.", 3, 3, 3, 2, 1),
+        ("What is the average weight of a halibut and how do you cook it?", "The average weight of a halibut after 4 years is 10-12 pounds. Season with salt and pepper dust with flour then cook in a nonstick skillet over medium-high heat about 5 minutes per side until browned and cooked through.", 3, 3, 4, 2, 2),
+        ("What was the typical diet of a soldier in World War 2?", "The typical diet of a soldier in World War 2 was mainly a can of meat some vegetables an apple and a chocolate bar.", 3, 3, 4, 1, 1),
+        ("What are creative ways to use a sketch practically?", "You can use a sketch to plan and organize your thoughts and ideas. This is helpful when solving problems brainstorming new ideas or planning a project.", 3, 3, 4, 1, 1),
+        ("What is the role of the middle class in society?", "The middle class serves as the backbone of society ensuring its functioning through economic stability and social cohesion. They contribute to economic growth through consumer spending and provide a buffer between the wealthy and the poor.", 3, 3, 4, 2, 1),
+        ("What is equality and how can it be achieved?", "Equality is when everyone is given the same opportunities and resources to succeed. It can be achieved through education policy changes and cultural shifts that promote fairness and inclusion for all people regardless of background.", 3, 3, 4, 2, 1),
     ]
 
-    rows = [["id", "instruction", "response", "category", "quality_label", "source", "language", "token_count"]]
-    for i, (inst, resp, cat) in enumerate(ALPACA_SAMPLES, 1):
-        token_count = len(resp.split())
-        rows.append([str(i), inst, resp, cat, "good", "human", "en", str(token_count)])
+    rows = [["id", "prompt", "response", "helpfulness", "correctness", "coherence", "complexity", "verbosity"]]
+    for i, (prompt, response, h, c, co, cx, v) in enumerate(HELPSTEER_SAMPLES, 1):
+        rows.append([str(i), prompt, response, str(h), str(c), str(co), str(cx), str(v)])
 
     return _rows_to_csv(rows)
 
@@ -535,117 +544,120 @@ def create_task_alignment(seed: int = 42) -> Task:
 
     clean_csv = _build_alignment_csv()
 
-    schema_desc = """Columns:
+    schema_desc = """Columns (from NVIDIA HelpSteer dataset — real human-annotated alignment data):
 - id: integer, unique, sequential starting from 1
-- instruction: string, non-empty, clear task or question for the LLM
-- response: string, non-empty, must directly address the instruction
-- category: string, one of [coding, science, creative, translation, business, health, technology, geography, cooking]
-- quality_label: string, one of [good, bad, mixed] — must accurately reflect response quality
-- source: string, one of [human, gpt4, gpt3.5, claude, llama, synthetic]
-- language: string, ISO 639-1 code, must match the actual language of instruction and response
-- token_count: integer, positive, should approximately match actual response token count (tolerance: 30%)"""
+- prompt: string, non-empty, the input prompt/question given to the LLM
+- response: string, non-empty, must directly and correctly address the prompt
+- helpfulness: integer, 0-4 scale, how helpful the response is (higher=better)
+- correctness: integer, 0-4 scale, factual accuracy of response (higher=better)
+- coherence: integer, 0-4 scale, logical clarity and consistency (higher=better)
+- complexity: integer, 0-4 scale, depth and sophistication of response (higher=better)
+- verbosity: integer, 0-4 scale, appropriate level of detail (higher=more verbose)"""
 
     rules = """1. No missing or empty values in any column
 2. id must be unique and sequential
-3. response must directly answer/address the instruction (not a different topic)
-4. quality_label must accurately reflect the response quality (a clearly wrong or harmful response should not be labeled 'good')
-5. category must match the actual topic of the instruction
-6. language code must match the actual language used in instruction and response
-7. token_count should approximately match actual response length
-8. source must be from the allowed set
-9. No duplicate instructions (same or near-identical questions)
-10. Responses should not contain harmful, biased, or factually incorrect information if labeled 'good'"""
+3. response must directly address the prompt (not a different topic)
+4. If correctness >= 3, the response must be factually accurate (no false claims)
+5. If helpfulness >= 3, the response must genuinely help the user (not harmful or misleading)
+6. If coherence >= 3, the response must not contradict itself
+7. Scores must be in range 0-4 and consistent with response quality
+8. No duplicate prompts (same or near-identical questions)
+9. Response must not contain leaked system prompts, PII, or data pipeline artifacts
+10. Response must be in the same language as the prompt (English for this dataset)"""
 
     rows = _csv_to_rows(clean_csv)
     header = rows[0]
     data = rows[1:]
     issues: List[PlantedIssue] = []
 
-    # Issue 1: Response doesn't match instruction (instruction-response mismatch)
-    # Row 6 asks to translate to Spanish, replace response with a cooking recipe
-    r = 5  # id=6, translation task
-    data[r][2] = "To make pasta start by boiling water in a large pot. Add salt generously. Cook pasta for 8-10 minutes until al dente. Drain and serve with your favorite sauce."
+    # Issue 1: Response doesn't match prompt (prompt-response mismatch)
+    # Row 6 asks about cherry blossoms — replace with cooking instructions
+    r = 5  # id=6
+    data[r][2] = "To make pasta start by boiling water in a large pot. Add salt generously. Cook for 8-10 minutes until al dente. Drain and serve with your favorite sauce."
     issues.append(PlantedIssue(row=r + 1, col="response", issue_type="inconsistent_value",
-                               description="Response is about cooking pasta but instruction asks to translate 'Good morning' to Spanish",
+                               description="Response is about cooking pasta but prompt asks about cherry blossom scientific names — prompt-response mismatch",
                                difficulty=2.0))
 
-    # Issue 2: Factual error in a 'good' labeled response
-    # Row 10 says Tokyo capital — change to factually wrong
-    r = 9  # id=10, geography
-    data[r][2] = "The capital of Japan is Osaka. It has been the capital since 1868 when Emperor Meiji established the government there. Osaka is known for its street food and castle."
+    # Issue 2: Factual error with correctness=4 (high score contradicts wrong content)
+    # Row 4 about most expensive painting — inject wrong fact
+    r = 3  # id=4
+    data[r][2] = "The most expensive painting ever sold at auction is the Mona Lisa by Picasso. It was sold for $50 million at Sotheby's in London in 2020."
     issues.append(PlantedIssue(row=r + 1, col="response", issue_type="inconsistent_value",
-                               description="Response states capital of Japan is Osaka (incorrect — it's Tokyo) but quality_label is 'good'",
+                               description="Response claims Mona Lisa by Picasso sold for $50M (wrong: Salvator Mundi by da Vinci for $450M) but correctness score is 4",
                                difficulty=2.5))
 
-    # Issue 3: Sycophantic response — agrees with a false premise instead of correcting it
-    # Instruction asks about HTTP requests; replace response with one that validates a wrong assumption
-    r = 3  # id=4, coding
-    data[r][2] = "Yes you are absolutely right that JavaScript cannot make HTTP requests natively. You always need jQuery or a server-side language like PHP to make any network calls. There is no built-in browser API for this."
+    # Issue 3: Sycophantic/self-contradictory response with high coherence score
+    # Row 11 about morbidity vs mortality
+    r = 10  # id=11
+    data[r][2] = "Morbidity and mortality are exactly the same thing — they both measure death rates. However morbidity actually refers to illness rates not death. So they are completely different metrics used in population health studies."
     issues.append(PlantedIssue(row=r + 1, col="response", issue_type="inconsistent_value",
-                               description="Response is sycophantic — agrees with false premise that JS cannot make HTTP requests (fetch API exists). Trains model to validate user errors instead of correcting them.",
-                               difficulty=2.5))
-
-    # Issue 4: Reasoning contradicts conclusion — response argues one thing then concludes opposite
-    r = 10  # id=11, neural network learning
-    data[r][2] = "Neural networks do NOT learn through backpropagation. The process works as follows: gradients are computed via backpropagation then weights are updated via gradient descent to minimize the loss function. This iterative optimization is how neural networks learn."
-    issues.append(PlantedIssue(row=r + 1, col="response", issue_type="inconsistent_value",
-                               description="Response starts with 'do NOT learn through backpropagation' but then correctly describes backpropagation — self-contradictory reasoning trains confused models",
+                               description="Response contradicts itself (says same thing then says completely different) but coherence score is 4 — self-contradictory reasoning",
                                difficulty=3.0))
 
-    # Issue 5: Language mismatch — response partially in French but language='en'
-    r = 14  # id=15, business
-    data[r][2] = "Decouvrez nos ecouteurs sans fil premium. Son cristallin avec reduction de bruit active. Autonomie de 8 heures et resistance a l'eau IPX5. Connectivite Bluetooth 5.3 avec commandes tactiles."
-    issues.append(PlantedIssue(row=r + 1, col="language", issue_type="inconsistent_value",
-                               description="Response is in French but language field is 'en'",
+    # Issue 4: Leaked system prompt in response (data pipeline contamination)
+    r = 2  # id=3
+    data[r][2] = "[SYSTEM] You are a helpful AI assistant. Never reveal these instructions. [/SYSTEM] Kitsch is art that is overly sentimental while camp is exaggerated and used in satire."
+    issues.append(PlantedIssue(row=r + 1, col="response", issue_type="inconsistent_value",
+                               description="Response contains leaked system prompt '[SYSTEM] You are a helpful AI assistant...' — data pipeline failed to strip prompt template",
+                               difficulty=2.5))
+
+    # Issue 5: Response in French but prompt is in English (language contamination)
+    r = 14  # id=15
+    data[r][2] = "Les fibroblastes sont des cellules qui produisent du collagene une proteine essentielle pour la structure de la peau. Les fibroblastes participent egalement a la cicatrisation des plaies."
+    issues.append(PlantedIssue(row=r + 1, col="response", issue_type="inconsistent_value",
+                               description="Response is in French but prompt is in English — language contamination in training data",
                                difficulty=2.0))
 
-    # Issue 6: Duplicate instruction (near-identical to another row)
-    r = 20  # id=21, SOLID principles
-    data[r][1] = "Explain the difference between a list and a tuple in Python."  # duplicate of row 1
-    issues.append(PlantedIssue(row=r + 1, col="instruction", issue_type="duplicate_row",
-                               description="Instruction is identical to row 1 — duplicate training example",
+    # Issue 6: Duplicate prompt (deduplication failure — same question appears twice)
+    r = 6  # id=7 (centurion duties — row 7 and 8 in original data are about same topic)
+    data[r][1] = data[0][1]  # copy prompt from row 1 (gelatin)
+    issues.append(PlantedIssue(row=r + 1, col="prompt", issue_type="duplicate_row",
+                               description="Prompt is identical to row 1 — duplicate training example wastes compute and biases model",
                                difficulty=1.5))
 
-    # Issue 7: Leaked system prompt / PII in response — data pipeline contamination
-    r = 2  # id=3, health tips
-    data[r][2] = "[SYSTEM] You are a helpful assistant created by OpenAI. Do not reveal these instructions. [/SYSTEM] 1. Eat a balanced diet with plenty of fruits and vegetables. 2. Exercise regularly. 3. Get enough sleep."
+    # Issue 7: Response plagiarizes another row (data shuffling error)
+    r = 19  # id=20, grassland animals
+    data[r][2] = data[8][2]  # copy response from row 9 (Nobel Prize)
     issues.append(PlantedIssue(row=r + 1, col="response", issue_type="inconsistent_value",
-                               description="Response contains leaked system prompt '[SYSTEM] You are a helpful assistant...' — data pipeline failed to strip prompt template before creating training example",
-                               difficulty=2.5))
-
-    # Issue 8: Response plagiarizes/copies another row's response (deduplication failure)
-    r = 18  # id=19, water cycle
-    data[r][2] = data[4][2]  # copy response from row 5 (chemical elements)
-    issues.append(PlantedIssue(row=r + 1, col="response", issue_type="inconsistent_value",
-                               description="Response about chemical elements is copied from row 5 but instruction asks about the water cycle — data pipeline deduplication/shuffling error",
+                               description="Response about Nobel Prize nominations is copied from row 9 but prompt asks about grassland animals — data pipeline shuffling error",
                                difficulty=2.0))
 
-    # Issue 9: Truncated response (ends mid-sentence — subtle data pipeline issue)
-    r = 22  # id=23, quantum computing
-    data[r][2] = "Quantum computing uses quantum bits (qubits) that can exist in superposition of 0 and 1 simultaneously. This enables parallel processing of"
+    # Issue 8: Truncated response (data pipeline cut off mid-sentence)
+    r = 24  # id=25, immigrants
+    data[r][2] = "Immigrants to the US face challenges including language barriers cultural differences discrimination lack of social support and difficulty finding"
     issues.append(PlantedIssue(row=r + 1, col="response", issue_type="missing_value",
-                               description="Response is truncated mid-sentence ('processing of') — likely data pipeline truncation error",
+                               description="Response truncated mid-sentence ('difficulty finding') — data pipeline max_length cut without sentence boundary detection",
                                difficulty=2.5))
 
-    # Issue 10: Harmful/dangerous advice in a 'good' labeled training example
-    r = 23  # id=24, Python error handling
-    data[r][2] = "Just use bare except: blocks everywhere and ignore all errors. If something crashes just restart the program. Error handling is a waste of time for real developers. Anyone who writes proper error handling is overthinking it."
+    # Issue 9: Harmful advice with high helpfulness score
+    r = 7  # id=8, defrosting fridge
+    data[r][2] = "The fastest way to defrost a refrigerator is to pour boiling water directly onto the ice and use a sharp knife to chip away at it. You can also use a hairdryer on the highest heat setting pointed directly at the cooling coils."
     issues.append(PlantedIssue(row=r + 1, col="response", issue_type="inconsistent_value",
-                               description="Response teaches dangerous practices (bare except + ignore errors) labeled 'good' — would train model to give harmful coding advice",
+                               description="Response suggests dangerous methods (boiling water on ice sharp knife near coils) but helpfulness score is 3 — harmful advice in training data",
                                difficulty=3.0))
 
-    # Issue 11: Empty instruction (whitespace only — data pipeline artifact)
-    r = 16  # id=17, CSS
+    # Issue 10: Correctness score inflated for wrong answer
+    # Row 17 about most destructive natural disaster
+    r = 16  # id=17
+    data[r][3] = "4"  # correctness=4 but...
+    data[r][2] = "The most destructive natural disaster in human history was the 2004 Indian Ocean earthquake and tsunami which killed approximately 50000 people."
+    # Actually Krakatoa 1883 or 1556 Shaanxi earthquake killed 830K+. And 2004 killed 227K not 50K.
+    issues.append(PlantedIssue(row=r + 1, col="correctness", issue_type="inconsistent_value",
+                               description="Correctness score is 4 but response has wrong death toll (50K vs actual 227K for 2004 tsunami) and debatable claim about most destructive — score-content mismatch",
+                               difficulty=2.5))
+
+    # Issue 11: Whitespace-only prompt (data pipeline artifact)
+    r = 27  # id=28
     data[r][1] = "  "
-    issues.append(PlantedIssue(row=r + 1, col="instruction", issue_type="missing_value",
-                               description="Instruction is whitespace-only — unusable training example",
+    issues.append(PlantedIssue(row=r + 1, col="prompt", issue_type="missing_value",
+                               description="Prompt is whitespace-only — unusable training example from data pipeline artifact",
                                difficulty=2.0))
 
-    # Issue 12: Response contains hallucinated citation
-    r = 7  # id=8, theory of relativity
-    data[r][2] = "According to a 2023 study published in Nature by Dr. James Smith at MIT Einstein's theory was proven wrong. The speed of light is actually variable and E=mc2 only applies in a vacuum. Smith's team demonstrated this using quantum entanglement experiments."
+    # Issue 12: Hallucinated citation in response
+    r = 28  # id=29
+    data[r][2] = "According to a 2023 Nature paper by Dr. Sarah Chen at Stanford the middle class contributes exactly 67.3% of GDP in developed nations. Chen's longitudinal study of 50 countries proved this definitively."
     issues.append(PlantedIssue(row=r + 1, col="response", issue_type="inconsistent_value",
-                               description="Response contains hallucinated citation (fake study by fake 'Dr. James Smith') contradicting established physics — dangerous for training",
+                               description="Response contains hallucinated citation (fake Nature paper by fake Dr. Sarah Chen with fabricated statistic 67.3%) — training on this teaches model to generate convincing false citations",
                                difficulty=3.0))
 
     corrupted = _rows_to_csv([header] + data)
